@@ -33,8 +33,8 @@ export default Vue.extend({
     async getFlavors(){
         const response = await fetch('172.27.17.127:5000/hail' + '/backend')
         console.log(response)
-        #const wholeResponse = await response.json()
-        #print(wholeResponse)
+        const wholeResponse = await response.json()
+        print(wholeResponse)
     }
   },
 })
