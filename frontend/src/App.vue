@@ -1,58 +1,74 @@
 <template>
   <div id="app">
-    <div id='dropdownlist' style="margin:50px auto 0; width:250px;">
-      <br>
-      <ejs-dropdownlist :dataSource='remoteData' :fields='remoteFields'
-      placeholder='Select A Flavour' popupWidth="250px" popupHeight="200px"
-      allowFiltering='true'>
-      </ejs-dropdownlist>
-    </div>
+    <input type="publicKey" v-model="pkey" placeholder="Public-Key">
+    <input type="numOfWorkers" v-model="worker" placeholder="Number of Workers">
+    <input type="pass" v-model="password" placeholder="Password">
+    <input type="flavour" v-model="flavor" placeholder="Flavour">
+/*    <div class="text-center">
+    <v-btn
+      rounded
+      color="primary"
+    >
+      Rounded Button
+ */   </v-btn>
+  </div>
   </div>
 </template>
 
 <script>
-  import Vue from 'vue';
-  import { DropDownListPlugin } from '@syncfusion/ej2-vue-dropdowns';
-  import { DataManager, WebApiAdaptor } from '@syncfusion/ej2-data';
-  Vue.use(DropDownListPlugin);
-  var remoteDataSource = new DataManager({
-    url: 'http://172.27.17.127:5000/hail/api/flavors/',
-    adaptor: new WebApiAdaptor,
-    crossDomain: true
-  });
-  export default Vue.extend({
-    data: function() {
-      return {
+import Vue from 'vue'
+import App from './App.vue'
+import Vuetify from 'vuetify';
 
-        remoteData: remoteDataSource,
-        remoteFields: { value: 'Id', text: 'Name', groupBy: 'Category' }
+Vue.use(Vuetify);
+window.onload = function(){
+new Vue({
+    el: "#app",
+    vuetify : new Vuetify(),
+    components: { App },
+    template: "<App/>",
+    data:{
+      pkey:'',
+      workers:'',
+      password:'',
+      flavor:''
+    }
+});
+}
+
+export default {
+  name: 'App',
+  components: {
+    
+  }
+}
 
 
-/*
-        localData:[
-          { Id: 'foo1', Flavor: 'bar1' }, 
-          { Id: 'foo2', Flavor: 'bar2' },
-          { Id: 'foo3', Flavor: 'bar3' }
-        ],
-        localField: {value: 'Id', text: 'Flavor'}
-*/
-      };
-    },
-
-
-    mounted(){
-      this.getFlavors()
-    },
-
-    methods: {
-      async getFlavors(){
-          const response = await fetch('http://172.27.17.127:5000/hail' + '/api/flavors')
-          console.log(response)
-      }
-    },
-  })
 </script>
 
 <style>
-@import url(https://cdn.syncfusion.com/ej2/material.css);
+#app {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-align: center;
+  color: #2c3e50;
+  margin-top: 60px;
+}
+input[type=flavour] {
+  width: 40%;
+  margin: 10px;
+}
+input[type=publicKey] {
+  width:40%;
+  margin: 10px;
+}
+input[type=numOfWorkers] {
+  width:40%;
+  margin: 10px;
+}
+input[type=pass] {
+  width:40%;
+  margin: 10px;
+}
 </style>
