@@ -16,22 +16,6 @@ import App from './App.vue'
 import Vuetify from 'vuetify';
 
 Vue.use(Vuetify);
-window.onload = function(){
-new Vue({
-    el: "#app",
-    vuetify : new Vuetify(),
-    components: { App },
-    template: "<App/>",
-    data(){
-      return{
-        pkey:'',
-        workers:'',
-        password:'',
-        flavor:''
-      }
-    }
-  });
-}
 
 export default {
   name: 'App',
@@ -53,19 +37,19 @@ export default {
   margin-top: 60px;
 }
 input[type=flavour] {
-  width: 40%;
+  width: 45%;
   margin: 10px;
 }
 input[type=publicKey] {
-  width:40%;
+  width:45%;
   margin: 10px;
 }
 input[type=numOfWorkers] {
-  width:40%;
+  width:45%;
   margin: 10px;
 }
 input[type=pass] {
-  width:40%;
+  width:45%;
   margin: 10px;
 }
 </style>
