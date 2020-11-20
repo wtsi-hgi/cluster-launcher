@@ -4,14 +4,9 @@
     <input type="numOfWorkers" v-model="worker" placeholder="Number of Workers">
     <input type="pass" v-model="password" placeholder="Password">
     <input type="flavour" v-model="flavor" placeholder="Flavour">
-/*    <div class="text-center">
-    <v-btn
-      rounded
-      color="primary"
-    >
+    <v-btn rounded color="primary">
       Rounded Button
- */   </v-btn>
-  </div>
+    </v-btn>
   </div>
 </template>
 
@@ -27,13 +22,15 @@ new Vue({
     vuetify : new Vuetify(),
     components: { App },
     template: "<App/>",
-    data:{
-      pkey:'',
-      workers:'',
-      password:'',
-      flavor:''
+    data(){
+      return{
+        pkey:'',
+        workers:'',
+        password:'',
+        flavor:''
+      }
     }
-});
+  });
 }
 
 export default {
