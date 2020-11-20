@@ -1,28 +1,29 @@
 <template>
   <div id="app">
     <input type="publicKey" v-model="pkey" placeholder="Public-Key">
-    <input type="numOfWorkers" v-model="worker" placeholder="Number of Workers">
+    <input type="numOfWorkers" v-model="workers" placeholder="Number of Workers">
     <input type="pass" v-model="password" placeholder="Password">
-    <input type="flavour" v-model="flavor" placeholder="Flavour">
+    <input type="flavour" v-model="flavour" placeholder="Flavour">
     <button rounded> Rounded Button </button>
   </div>
 </template>
 
 <script>
 import Vue from 'vue'
-
 import Vuetify from 'vuetify';
 
 Vue.use(Vuetify);
 
 export default {
   name: 'App',
-  components: {
-    
-  }
+  components: {},
+  data: () => ({
+    pkey:     'abc',
+    workers:  '',
+    password: '',
+    flavour:  ''
+  })
 }
-
-
 </script>
 
 <style>
