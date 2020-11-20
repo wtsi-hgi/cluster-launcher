@@ -4,15 +4,13 @@
     <input type="numOfWorkers" v-model="worker" placeholder="Number of Workers">
     <input type="pass" v-model="password" placeholder="Password">
     <input type="flavour" v-model="flavor" placeholder="Flavour">
-    <v-btn rounded color="primary">
-      Rounded Button
-    </v-btn>
+    <button rounded> Rounded Button </button>
   </div>
 </template>
 
 <script>
 import Vue from 'vue'
-import App from './App.vue'
+
 import Vuetify from 'vuetify';
 
 Vue.use(Vuetify);
