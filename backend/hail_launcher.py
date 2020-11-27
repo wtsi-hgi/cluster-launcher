@@ -1,7 +1,8 @@
 import os
 import subprocess
 
-def startup(user, num_workers, public_key, flavor, image_name, vol_name, vol_size, device_name):
+def handler(request):
+    return web.Response(headers={'ACCESS-CONTROL-ALLOW-ORIGIN':'*'})
     path = "../clusters/" + user
     if (os.path.isdir(path)):
         #If cluster file for user exists, do something
