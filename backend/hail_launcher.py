@@ -1,9 +1,15 @@
+from aiohttp import web
 import os
 import subprocess
 
 def handler(request):
     return web.Response(headers={'ACCESS-CONTROL-ALLOW-ORIGIN':'*'})
-    path = "../clusters/" + user
+
+
+
+
+
+'''    path = "../clusters/" + user
     if (os.path.isdir(path)):
         #If cluster file for user exists, do something
         pass
@@ -28,3 +34,4 @@ if __name__ == "__main__":
     #3a If yes, launch Jupter Notebook
     #3b. If no, let user create cluster
     startup(username, num_workers, public_key, flavor, image_name, vol_name, vol_size, device_name)
+'''
