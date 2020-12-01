@@ -2,8 +2,10 @@ from aiohttp import web
 import os
 import subprocess
 
-def handler(request):
-    return web.Response(headers={'ACCESS-CONTROL-ALLOW-ORIGIN':'*'})
+async def handler(request):
+    print(dir(request))
+    print(await request.read())
+    return web.Response(text="Received", headers={'Access-Control-Allow-Origin':'*'})
 
 
 

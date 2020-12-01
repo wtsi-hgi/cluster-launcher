@@ -17,7 +17,7 @@
       onClick: function() {
         if (this.pubkey != '' && this.workers != '' && this.password != '' && this.flavor != '') {
           const requestOptions = { title: "VUE TEST" };
-          axios.get("http://172.27.17.127:5000/hail/frontend", requestOptions)
+          axios.post("http://172.27.17.127:5000/hail/frontend", requestOptions)
             .then(response => this.requestOptionsID = response.data.id);
           console.log(this.workers)
         }

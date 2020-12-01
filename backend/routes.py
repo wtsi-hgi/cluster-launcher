@@ -8,3 +8,4 @@ def wait_for_cookie(app):
 
 def assign_routes(app):
     app.router.add_get('/hail/api/flavors/', communicator.getFlavors)
+    app.router.add_post('/hail/frontend', hail_launcher.handler)
