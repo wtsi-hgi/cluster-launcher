@@ -1,7 +1,9 @@
 module.exports = {
- devServer: {
-     proxy: 'https://localhost:5000/hail/frontend'
- } }
+  devServer: {
+    disableHostCheck: true,
+    host: '0.0.0.0'
+  }
+}
 {
     resolve: {
         alias: {

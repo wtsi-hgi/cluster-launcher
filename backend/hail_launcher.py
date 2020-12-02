@@ -5,7 +5,7 @@ import subprocess
 async def handler(request):
     print(dir(request))
     print(await request.read())
-    return web.Response(text="Received", headers={'Access-Control-Allow-Origin':'*'})
+    return web.Response(text="Received")
 
 
 

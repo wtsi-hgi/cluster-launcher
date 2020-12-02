@@ -1,0 +1,2 @@
+python-novaclient==9.1.1
+aiohttp==3.5.4
