@@ -1,15 +1,62 @@
 from aiohttp import web
+import openstack
 import os
 import subprocess
 
-async def handler(request):
-    print(dir(request))
-    print(await request.read())
-    return web.Response(text="Received")
+username="an12"
 
 
+def handler(request):
+  #print(await request.json())
+  #attributes = await request.json()
+  credentials = get_credentials()
+  conn = openstack.connect(**credentials)
+  create_network(conn)
 
+  return web.Response(text="Received")
 
+def create_network(conn):
+  network_name = username+"-cluster-network"
+  network_list = list_networks(conn)
+  public_network = conn.network.find_network('public')
+
+  if network_name in network_list:
+    print("Already made")
+  else:
+    print("Creating Network...")
+    network = conn.network.create_network(name=username+'-cluster-network')
+    subnet = conn.network.create_subnet(name=username+'-cluster-subnet',
+      network_id=network.id,
+      ip_version='4',
+      cidr='192.100.100.100/24'
+      )
+    request = {'router': {'name': 'router name',
+      'admin_state_up': True,
+      'external_gateway_info': {'network_id': public_network.id}}}
+    #name=username+'-cluster-router', external_gateway_info=public_network.id
+    router = conn.network.create_router(body=request)
+    print(dir(router))
+    port_cluster = conn.network.create_port(name= username+'-cluster-port',
+      device_id=router.id,
+      network_id=network.id
+      )
+
+def list_networks(conn):
+  network_list = []
+  for network in conn.network.networks():
+        network_list.append(network.name)
+  return network_list
+
+def get_credentials():
+    d = {}
+    d['version']  = "2"
+    d['username'] = os.environ['OS_USERNAME']
+    d['api_key'] = os.environ['OS_PASSWORD']
+    d['auth_url'] = os.environ['OS_AUTH_URL']
+    d['project_id'] = os.environ['OS_PROJECT_ID']
+    return d
+
+print(handler(1))
 
 '''    path = "../clusters/" + user
     if (os.path.isdir(path)):
