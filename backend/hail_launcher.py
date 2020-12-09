@@ -1,3 +1,6 @@
+from network import create
+from network import destroy
+
 from aiohttp import web
 import openstack
 import os
@@ -6,40 +9,35 @@ import subprocess
 username="an12"
 
 
-def handler(request):
-  #print(await request.json())
-  #attributes = await request.json()
-  credentials = get_credentials()
-  conn = openstack.connect(**credentials)
-  create_network(conn)
+async def handler(request):
+  print(await request.json())
+  attributes = await request.json()
+  #credentials = get_credentials()
+  #conn = openstack.connect(**credentials)
+  #create_network(conn)
+  #print("Network Created... Deleting Network")
+  #destroy_network(conn)
 
   return web.Response(text="Received")
 
 def create_network(conn):
   network_name = username+"-cluster-network"
   network_list = list_networks(conn)
-  public_network = conn.network.find_network('public')
 
   if network_name in network_list:
-    print("Already made")
+    print("Network Exists")
   else:
-    print("Creating Network...")
-    network = conn.network.create_network(name=username+'-cluster-network')
-    subnet = conn.network.create_subnet(name=username+'-cluster-subnet',
-      network_id=network.id,
-      ip_version='4',
-      cidr='192.100.100.100/24'
-      )
-    request = {'router': {'name': 'router name',
-      'admin_state_up': True,
-      'external_gateway_info': {'network_id': public_network.id}}}
-    #name=username+'-cluster-router', external_gateway_info=public_network.id
-    router = conn.network.create_router(body=request)
-    print(dir(router))
-    port_cluster = conn.network.create_port(name= username+'-cluster-port',
-      device_id=router.id,
-      network_id=network.id
-      )
+    create(username)
+
+def destroy_network(conn):
+  prefix = username+"-cluster"
+  network_name = prefix + "-network"
+  network_list = list_networks(conn)
+  if network_name in network_list:
+    destroy(username)
+  else:
+    print("Network doesn't exist")
+
 
 def list_networks(conn):
   network_list = []
@@ -56,7 +54,7 @@ def get_credentials():
     d['project_id'] = os.environ['OS_PROJECT_ID']
     return d
 
-print(handler(1))
+
 
 '''    path = "../clusters/" + user
     if (os.path.isdir(path)):
