@@ -1,4 +1,4 @@
-#Cluster Launcher
+# Cluster Launcher
 
 This repository is an extension to the osdataproc project, repo found: https://github.com/wtsi-hgi/osdataproc,
 used to bring up hail clusters in an easy, simple web interface. The following information is required to bring up
@@ -8,7 +8,7 @@ a hail clusters:
  * Number of Workers
  * Password for Volume
 
-##Steps for Setup and use:
+## Steps for Setup and use:
 1. Clone the repo
 2. Download a openrc file and move it into the backend directory
 3. Ensure Docker is downloaded/usable
