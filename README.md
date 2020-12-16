@@ -2,7 +2,7 @@
 
 This repository is an extension to the osdataproc project, repo found: https://github.com/wtsi-hgi/osdataproc,
 used to bring up hail clusters in an easy, simple web interface. The following information is required to bring up
-a hail clusters:
+a hail cluster:
  * Your Public Key
  * Desired Flavor for cluster
  * Number of Workers
