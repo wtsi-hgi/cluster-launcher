@@ -2,19 +2,29 @@ from network import create
 from network import destroy
 
 from aiohttp import web
+from os import path
 import openstack
-import os
+import os.path
 import subprocess
 
 username="an12"
 
 
 async def handler(request):
-  print(await request.json())
   attributes = await request.json()
-  #credentials = get_credentials()
-  #conn = openstack.connect(**credentials)
-  #create_network(conn)
+  print(attributes["public_key"])
+
+  with open('public_key.pub', 'w') as key_file:
+    key_file.write(attributes["public_key"])
+
+  credentials = get_credentials()
+  conn = openstack.connect(**credentials)
+
+  if path.exists('/backend/clusters/'+username):
+    print("Path exists")
+  else:
+    create_network(conn)
+    subprocess.run(['bash', 'user-creation.sh', username, attributes["password"]])
   #print("Network Created... Deleting Network")
   #destroy_network(conn)
 

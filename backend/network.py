@@ -93,7 +93,7 @@ def destroy(username):
   network_name = prefix+"-network"
 
   # Get the externally routed network
-  cursor.execute('''SELECT * FROM networking WHERE user_name = ?''',(username))
+  cursor.execute('''SELECT * FROM networking WHERE user_name = ?''',(username,))
   search = cursor.fetchall()[0]
   network_id = search[1]
   subnet_id = search[2]
@@ -107,5 +107,8 @@ def destroy(username):
   neutron.delete_subnet(subnet_id)
   neutron.delete_network(network_id)
 
-  cursor.execute('''DELETE FROM networking WHERE user_name=username''')
+  cursor.execute('''DELETE FROM networking WHERE user_name= ?''',(username,))
   print("Network deconstructed")
+  db.commit()
+  db.close()
+
