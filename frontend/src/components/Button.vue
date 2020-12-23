@@ -11,7 +11,8 @@
       pubkey: {required: true, type:String},
       workers: {required: true, type:String},
       password: {required: true, type:String},
-      flavor: {required: true, type:String}      
+      flavor: {required: true, type:String},
+      status: {type: Boolean}
     },
     methods: {
       onClick: function() {
@@ -19,9 +20,13 @@
           const requestOptions = { public_key: this.pubkey, workers: this.workers, password: this.password, flavor: this.flavor };
           axios.post("/api/hail/frontend", requestOptions)
             .then(response => this.requestOptionsID = response.data.id);
-          console.log(this.workers)
+          
+          let newStatus = this.status
+          newStatus =! newStatus
+          this.$emit("update-status", newStatus);
         }
-      }
+        console.log(this.status)
+      }      
     }
   }
 </script>
