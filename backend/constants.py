@@ -1,1 +1,1 @@
-DATABASE_NAME = "cluster-networking.db"
+DATABASE_NAME = "/backend/clusters/cluster-networking.db"
