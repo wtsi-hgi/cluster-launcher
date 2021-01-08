@@ -29,8 +29,13 @@ def initialise_database():
       router_id TEXT,
       cluster_ip TEXT)
     ''')
+
+    cursor.execute('''SELECT * FROM networking WHERE user_name = ?''',(username,))
+    print(cursor.fetchall()[0])
+
   except sqlite3.OperationalError:
     # this triggers when table "networking" already exists in the DB
+    print("Database Already Initialised")
     pass
 
   db.commit()
@@ -87,28 +92,38 @@ def create(username):
 def destroy(username):
   db = sqlite3.connect(DATABASE_NAME)
   cursor = db.cursor()
+  initialise_database()
 
   neutron = _neutron()
   prefix = username+"-cluter"
   network_name = prefix+"-network"
 
+  try:
   # Get the externally routed network
-  cursor.execute('''SELECT * FROM networking WHERE user_name = ?''',(username,))
-  search = cursor.fetchall()[0]
-  network_id = search[1]
-  subnet_id = search[2]
-  router_id = search[3]
+    cursor.execute('''SELECT * FROM networking WHERE user_name = ?''',(username,))
+    search = cursor.fetchall()[0]
+    network_id = search[1]
+    subnet_id = search[2]
+    router_id = search[3]
 
-  neutron.remove_interface_router(router_id, {
-    "subnet_id": subnet_id
-  })
+    neutron.remove_interface_router(router_id, {
+      "subnet_id": subnet_id
+    })
 
-  neutron.delete_router(router_id)
-  neutron.delete_subnet(subnet_id)
-  neutron.delete_network(network_id)
+    neutron.delete_router(router_id)
+    neutron.delete_subnet(subnet_id)
+    neutron.delete_network(network_id)
 
-  cursor.execute('''DELETE FROM networking WHERE user_name= ?''',(username,))
-  print("Network deconstructed")
+    cursor.execute('''DELETE FROM networking WHERE user_name= ?''',(username,))
+    print("Network deconstructed")
+
+  except sqlite3.OperationalError:
+    # this triggers when table "networking" already exists in the DB
+    print("An error has occured while deleting the network")
+    pass
+  except IndexError:
+    print("Database is empty and therefore cannot delete network")
+    pass
   db.commit()
   db.close()
 

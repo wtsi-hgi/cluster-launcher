@@ -3,6 +3,7 @@ from network import destroy
 
 from aiohttp import web
 from os import path
+import asyncio
 import openstack
 import os.path
 import subprocess
@@ -12,7 +13,7 @@ username="an12"
 
 async def handler(request):
   attributes = await request.json()
-  print(attributes["public_key"])
+  print(attributes)
 
   with open('public_key.pub', 'w') as key_file:
     key_file.write(attributes["public_key"])
@@ -20,15 +21,36 @@ async def handler(request):
   credentials = get_credentials()
   conn = openstack.connect(**credentials)
 
-  if path.exists('/backend/clusters/'+username):
-    print("Path exists")
+  if attributes["status"] == False:
+    if path.exists('/backend/clusters/'+username):
+      print("A cluster is already registered - an error has occured!")
+    else:
+      create_network(conn)
+      subprocess.run(['bash', 'user-creation.sh', username, attributes["password"]])
   else:
-    create_network(conn)
-    subprocess.run(['bash', 'user-creation.sh', username, attributes["password"]])
-  #print("Network Created... Deleting Network")
-  #destroy_network(conn)
+    if path.exists('/backend/clusters/'+username):
+      subprocess.run(['bash', 'cluster-deletion.sh', username])
+      destroy_network(conn)
+    else:
+      print("No cluster exists - an error has occured")
 
   return web.Response(text="Received")
+
+async def run(cmd):
+    proc = await asyncio.create_subprocess_shell(
+        cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE)
+
+    stdout, stderr = await proc.communicate()
+
+    print(f'[{cmd!r} exited with {proc.returncode}]')
+    if stdout:
+        print(f'[stdout]\n{stdout.decode()}')
+    if stderr:
+        print(f'[stderr]\n{stderr.decode()}')
+
+
 
 def create_network(conn):
   network_name = username+"-cluster-network"
