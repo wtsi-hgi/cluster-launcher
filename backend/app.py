@@ -15,7 +15,7 @@ if __name__ == '__main__':
 
   app.on_shutdown.append(shutdown)
 
-  loop = asyncio.get_event_loop()
+  #loop = asyncio.get_event_loop()
 
   app["jobs"] = {}
   app["pool"] = ThreadPoolExecutor(max_workers=5)
