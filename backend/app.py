@@ -1,15 +1,24 @@
 from aiohttp import web
+from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import json
 
 import routes
 import subprocess
 
+
+async def shutdown(app):
+  app["pool"].shutdown()
+
 if __name__ == '__main__':
-    app = web.Application()
+  app = web.Application()
 
-    loop = asyncio.get_event_loop()
+  app.on_shutdown.append(shutdown)
 
-    routes.assign_routes(app)
+  loop = asyncio.get_event_loop()
 
-    web.run_app(app, port=5000)
+  app["jobs"] = {}
+  app["pool"] = ThreadPoolExecutor(max_workers=5)
+
+  routes.assign_routes(app)
+  web.run_app(app, port=5000)
