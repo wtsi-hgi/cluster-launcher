@@ -23,7 +23,7 @@
         let newStatus = this.status
         console.log("status = " + newStatus)
         newStatus =! newStatus
-        this.$emit("update-status", newStatus)
+        this.$emit("update-status")
         console.log(newStatus)
       }      
     }

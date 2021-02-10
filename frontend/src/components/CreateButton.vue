@@ -18,7 +18,7 @@
       onClick: function() {
         if (this.pubkey != '' && this.workers != '' && this.password != '' && this.flavor != '') {
           const requestOptions = { public_key: this.pubkey, workers: this.workers, password: this.password, flavor: this.flavor, status: this.status };
-          axios.post("/api/hail/frontend", requestOptions)
+          axios.post("/api/hail/frontend/create", requestOptions)
             .then(response => this.requestOptionsID = response.data.id);
           
           let newStatus = this.status
