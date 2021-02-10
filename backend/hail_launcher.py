@@ -11,6 +11,7 @@ import os.path
 import subprocess
 
 username="an12"
+DEBUG = False
 
 async def startup(request):
   attributes = await request.json()
@@ -30,7 +31,11 @@ async def startup(request):
       print("A cluster is already registered - an error has occured!")
     else:
       create_network(conn)
-      jobs[username] = pool.submit(run, ['bash', 'user-creation.sh', username, attributes["password"]])
+      #Job Tuple for launching clusters. Useful for checking status of jobs and their state
+      jobs[username] =( pool.submit(run, ['bash', 'user-creation.sh', username, attributes["password"]]),
+         "UP")
+      if DEBUG:
+        print(jobs[username][0].result())
       print("Cluster Creation in Progress")
 
   return web.Response(text="Received")
@@ -47,7 +52,10 @@ async def tear_down(request):
 
   if attributes["status"] == True:
     if path.exists('/backend/clusters/'+username):
-      jobs[username] = pool.submit(run, ['bash', 'cluster-deletion.sh', username])
+      #Job Tuple for destroying clusters. Useful for checking status of jobs and their state
+      jobs[username] = ( pool.submit(run, ['bash', 'cluster-deletion.sh', username]), "DOWN")
+      if DEBUG:
+        print(jobs[username][0].result())
       destroy_network(conn)
       print("Cluster Deletion in Progress")
 
@@ -62,26 +70,45 @@ async def job_status(request):
   credentials = get_credentials()
   conn = openstack.connect(**credentials)
 
+  path_to_cluster_ip = '/backend/clusters/' + username + '/osdataproc/terraform/terraform.tfstate.d/' + username + '/outputs.json'
+
   if username not in jobs:
-    return web.json_response({
-      "status": "down"
-    })
-
-  else:
-    job = jobs[username]
-
-    if job.done():
-      path = '/backend/clusters/an12/osdataproc/terraform/terraform.tfstate.d/an12/outputs.json'
-      with open(path) as json_file:
+    print("Down")
+    if path.exists(path_to_cluster_ip):
+      with open(path_to_cluster_ip) as json_file:
         data = json.load(json_file)
         cluster_ip = data["spark_master_public_ip"]["value"]
-
+        print(cluster_ip)
       return web.json_response({
-        "status": "done",
-        "cluster_ip": "cluster_ip"
+        "status": "up",
+        "cluster_ip": cluster_ip
+      })
+    else:
+      return web.json_response({
+        "status": "down"
       })
 
+  else:
+    job = jobs[username][0]
+
+    if job.done():
+      if jobs[username][1] == "UP":
+        print("UP DONE")
+        with open(path_to_cluster_ip) as json_file:
+          data = json.load(json_file)
+          cluster_ip = data["spark_master_public_ip"]["value"]
+        return web.json_response({
+          "status": "up",
+          "cluster_ip": cluster_ip
+        })
+      elif jobs[username][1] == "DOWN":
+        print("DOWN DONE")
+        return web.json_response({
+          "status": "down"
+        })
+
     if job.running():
+      print("Pending")
       return web.json_response({
         "status": "pending"
       })
@@ -102,7 +129,9 @@ def create_network(conn):
 def destroy_network(conn):
   prefix = username+"-cluster"
   network_name = prefix + "-network"
+
   network_list = list_networks(conn)
+
   if network_name in network_list:
     destroy(username)
   else:
@@ -111,15 +140,22 @@ def destroy_network(conn):
 
 def list_networks(conn):
   network_list = []
-  for network in conn.network.networks():
+
+  try:
+    for network in conn.network.networks():
         network_list.append(network.name)
+  except:
+    raise Exception("An issue with connecting to OpenStack has occured when listing networks")
   return network_list
 
 def get_credentials():
-    d = {}
+  d = {}
+  try:
     d['version']  = "2"
     d['username'] = os.environ['OS_USERNAME']
     d['api_key'] = os.environ['OS_PASSWORD']
     d['auth_url'] = os.environ['OS_AUTH_URL']
     d['project_id'] = os.environ['OS_PROJECT_ID']
-    return d
+  except KeyError:
+    raise Exception("Could not find all required fields in the environment")
+  return d

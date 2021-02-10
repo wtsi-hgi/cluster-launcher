@@ -5,6 +5,8 @@ import sqlite3
 from keystoneauth1 import identity, session
 from neutronclient.v2_0 import client
 
+username = "an12"
+
 def _neutron():
     creds = {
         "auth_url":          os.environ["OS_AUTH_URL"] + "/v3",
