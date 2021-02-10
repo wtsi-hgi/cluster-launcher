@@ -1,4 +1,4 @@
-version: "3"
+version: "3.5"
 services: 
   backend:
     build:
@@ -7,7 +7,10 @@ services:
     networks: [app]
     ports: ['5000:5000']
     volumes:
-    - /home/ubuntu/clusters:/backend/clusters
+     - /home/ubuntu/clusters:/backend/clusters
+    secrets:
+     - source: mercury-key
+       target: /root/.ssh/id_rsa
   frontend:
     build:
       context: ./frontend
@@ -27,6 +30,10 @@ services:
     - app
     volumes:
     - ./nginx.conf:/etc/nginx/conf.d/default.conf
+
+secrets:
+  mercury-key:
+    file: id_rsa
 
 networks:
   app:
