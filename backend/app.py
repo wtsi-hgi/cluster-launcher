@@ -19,6 +19,7 @@ if __name__ == '__main__':
 
   app["jobs"] = {}
   app["pool"] = ThreadPoolExecutor(max_workers=5)
+  app["status"] = ""
 
   routes.assign_routes(app)
   web.run_app(app, port=5000)
