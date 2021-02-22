@@ -1,6 +1,6 @@
 from network import create
 from network import destroy
-
+ 
 from aiohttp import web
 from concurrent.futures import ThreadPoolExecutor
 from os import path
@@ -9,6 +9,7 @@ import json
 import openstack
 import os.path
 import subprocess
+import time
 
 username="an12"
 DEBUG = False
@@ -26,13 +27,22 @@ async def startup(request):
   credentials = get_credentials()
   conn = openstack.connect(**credentials)
 
+  flavor_names = (getFlavors(conn))
+
+  if attributes["flavor"] in flavor_names:
+    print(attributes["flavor"])
+  else:
+    print("Invalid Flavor - Switching to default")
+    flavor_id = "m2.medium"
+
   if attributes["status"] == False:
     if path.exists('/backend/clusters/'+username):
       print("A cluster is already registered - an error has occured!")
     else:
+      request.app["status"]="UP"
       create_network(conn)
       #Job Tuple for launching clusters. Useful for checking status of jobs and their state
-      jobs[username] =( pool.submit(run, ['bash', 'user-creation.sh', username, attributes["password"]]),
+      jobs[username] =( pool.submit(run, ['bash', 'user-creation.sh', username, attributes["password"], attributes["workers"], attributes["flavor"]]),
          "UP")
       if DEBUG:
         print(jobs[username][0].result())
@@ -52,11 +62,12 @@ async def tear_down(request):
 
   if attributes["status"] == True:
     if path.exists('/backend/clusters/'+username):
+      request.app["status"]="DOWN"
       #Job Tuple for destroying clusters. Useful for checking status of jobs and their state
       jobs[username] = ( pool.submit(run, ['bash', 'cluster-deletion.sh', username]), "DOWN")
       if DEBUG:
         print(jobs[username][0].result())
-      destroy_network(conn)
+      output = pool.submit(destroy_network, conn)
       print("Cluster Deletion in Progress")
 
     else:
@@ -110,7 +121,8 @@ async def job_status(request):
     if job.running():
       print("Pending")
       return web.json_response({
-        "status": "pending"
+        "status": "pending",
+        "pending": request.app["status"]
       })
 
 def run(cmd):
@@ -133,6 +145,7 @@ def destroy_network(conn):
   network_list = list_networks(conn)
 
   if network_name in network_list:
+    time.sleep(200)
     destroy(username)
   else:
     print("Network doesn't exist")
@@ -147,6 +160,21 @@ def list_networks(conn):
   except:
     raise Exception("An issue with connecting to OpenStack has occured when listing networks")
   return network_list
+
+def getFlavors(conn):
+    flavors=conn.list_flavors()
+    ListOfFlavors = []
+    for flavor in flavors:
+        if flavor.id is not None:
+            #flavorMap = {}
+            #flavorMap['Id'] = flavor.id
+            #flavorMap['Name'] = flavor.name
+            #category = flavor.name.split('.')
+            #flavorMap['Category'] = category[0]
+            ListOfFlavors.append(str(flavor.name))
+
+    return ListOfFlavors
+
 
 def get_credentials():
   d = {}
