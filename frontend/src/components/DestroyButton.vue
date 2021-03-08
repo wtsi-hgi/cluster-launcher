@@ -17,7 +17,7 @@
     methods: {
       onClick: function() {
         const requestOptions = { public_key: this.pubkey, workers: this.workers, password: this.password, flavor: this.flavor, status: this.status };
-        axios.post("/api/hail/frontend/destroy", requestOptions)
+        axios.post("/cluster-launcher/api/hail/frontend/destroy", requestOptions)
           .then(response => this.requestOptionsID = response.data.id);
           
         let newStatus = this.status

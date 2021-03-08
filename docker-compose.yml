@@ -1,6 +1,6 @@
 version: "3.5"
 services: 
-  backend:
+  launcher-backend:
     build:
       context: ./backend
     restart: always
@@ -11,21 +11,21 @@ services:
     secrets:
      - source: mercury-key
        target: /root/.ssh/id_rsa
-  frontend:
+  launcher-frontend:
     build:
       context: ./frontend
     restart: always
     networks: [app]
     ports: ['8080:8080']
-    depends_on: [backend]
+    depends_on: [launcher-backend]
   nginx:
     image: nginx
     restart: always
     depends_on:
-    - backend
-    - frontend
+    - launcher-backend
+    - launcher-frontend
     ports:
-    - 8000:80
+    - "443:443"
     networks:
     - app
     volumes:

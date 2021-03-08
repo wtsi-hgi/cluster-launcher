@@ -89,7 +89,7 @@
       clusterCheck: function() {
         console.log("Working")
         const requestOptions = { status: this.status }
-        axios.post("/api/hail/frontend/status", requestOptions)
+        axios.post("/cluster-launcher/api/hail/frontend/status", requestOptions)
             .then((response) => {
               console.log(response.data.status)
               if (response.data.status == 'down') {
@@ -137,7 +137,7 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-align: center;
-    color: #2c3e50;
+    color: #2c3e50 !important;
   }
   input[type=flavour] {
     width: 45%;
@@ -157,16 +157,13 @@
   }
   input[type=tenants] {
     width: 45%;
-    margin: 10px;
-    
-    
-    
+    margin: 10px;    
   }
   /* Header */
-  .header {
+  #app .header {
     background: #73FF75;
     width: 100%;
-    opacity: 50%;
+    opacity: 0.5;
     margin-bottom: 40px;
     float: left;
   }

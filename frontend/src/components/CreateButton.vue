@@ -12,14 +12,13 @@
       workers: {required: true, type:String},
       password: {required: true, type:String},
       flavor: {required: true, type:String},
-      tenant: {required: true, type:String},
       status: {type: Boolean}
     },
     methods: {
       onClick: function() {
         if (this.pubkey == '' && this.workers != '' && this.password != '' && this.flavor != '') {
           const requestOptions = { public_key: this.pubkey, workers: this.workers, password: this.password, flavor: this.flavor, tennat: this.tenant, status: this.status };
-          axios.post("/api/hail/frontend/create", requestOptions)
+          axios.post("/cluster-launcher/api/hail/frontend/create", requestOptions)
             .then(response => this.requestOptionsID = response.data.id);
           
           let newStatus = this.status

@@ -1,7 +1,8 @@
 module.exports = {
   runtimeCompiler: true,
+  publicPath: "/cluster-launcher/",
   devServer: {
     disableHostCheck: true,
-    host: '0.0.0.0'
+    public: "http://localhost:443/cluster-launcher/"
   }
 }

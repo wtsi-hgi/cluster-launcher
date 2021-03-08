@@ -80,7 +80,7 @@ async def job_status(request):
   jobs = request.app["jobs"]
   credentials = get_credentials()
   conn = openstack.connect(**credentials)
-
+  print(request)
   path_to_cluster_ip = '/backend/clusters/' + username + '/osdataproc/terraform/terraform.tfstate.d/' + username + '/outputs.json'
 
   if username not in jobs:
