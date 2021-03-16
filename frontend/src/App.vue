@@ -87,9 +87,9 @@
         this.pending= !this.pending;
       },
       clusterCheck: function() {
-        console.log("Working")
+        console.log(process.env.VUE_APP_BACKEND_API_URL)
         const requestOptions = { status: this.status }
-        axios.post("/cluster-launcher/api/hail/frontend/status", requestOptions)
+        axios.post(process.env.VUE_APP_BACKEND_API_URL + '/hail/frontend/status', requestOptions)
             .then((response) => {
               console.log(response.data.status)
               if (response.data.status == 'down') {

@@ -12,7 +12,7 @@ import subprocess
 import time
 
 username="an12"
-DEBUG = False
+DEBUG = True
 
 async def startup(request):
   attributes = await request.json()
