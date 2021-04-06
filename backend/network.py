@@ -5,7 +5,6 @@ import sqlite3
 from keystoneauth1 import identity, session
 from neutronclient.v2_0 import client
 
-username = "an12"
 
 def _neutron():
     creds = {
@@ -19,34 +18,34 @@ def _neutron():
 
     return client.Client(session=session.Session(auth=identity.Password(**creds)))
 
-def initialise_database():
+def initialise_database(username):
   #Initialise the database by creating the SQL tables if not present already
   db = sqlite3.connect(DATABASE_NAME)
   cursor = db.cursor()
 
-  try:
-    cursor.execute('''CREATE TABLE networking(user_name TEXT PRIMARY KEY,
+  cursor.execute('''
+    CREATE TABLE IF NOT EXISTS networking(
+      user_name TEXT PRIMARY KEY,
       network_id TEXT,
       subnet_id TEXT,
       router_id TEXT,
-      cluster_ip TEXT)
-    ''')
+      cluster_ip TEXT
+    )
+  ''')
 
-    cursor.execute('''SELECT * FROM networking WHERE user_name = ?''',(username,))
-    print(cursor.fetchall()[0])
-
-  except sqlite3.OperationalError:
-    # this triggers when table "networking" already exists in the DB
-    print("Database Already Initialised")
-    pass
+  cursor.execute('''SELECT * FROM networking WHERE user_name = ?''',(username,))
 
   db.commit()
   db.close()
 
+# Due to IP Limitations, each cluster is created with its own network to allow the maximum
+# number of worker nodes to be created per user. This function will assume that no
+# existing network exists, pertaining to checks in hail_launcher.py
 def create(username):
   prefix = username+"-cluster"
   neutron = _neutron()
-  initialise_database()
+  initialise_database(username)
+
   # Get the externally routed network
   public = neutron.list_networks(retrieve_all=True, **{
       "router:external": True
@@ -91,10 +90,12 @@ def create(username):
   db.commit()
   db.close()
 
+# This function will assume that no existing network exists, pertaining to
+# checks in hail_launcher.py
 def destroy(username):
   db = sqlite3.connect(DATABASE_NAME)
   cursor = db.cursor()
-  initialise_database()
+  initialise_database(username)
 
   neutron = _neutron()
   prefix = username+"-cluter"
@@ -102,11 +103,13 @@ def destroy(username):
 
   try:
   # Get the externally routed network
-    cursor.execute('''SELECT * FROM networking WHERE user_name = ?''',(username,))
-    search = cursor.fetchall()[0]
-    network_id = search[1]
-    subnet_id = search[2]
-    router_id = search[3]
+    cursor.execute('''
+      SELECT network_id, subnet_id, router_id
+      FROM networking
+      WHERE user_name = ?
+    ''',(username,))
+
+    network_id, subnet_id, router_id = cursor.fetchone()
 
     neutron.remove_interface_router(router_id, {
       "subnet_id": subnet_id

@@ -5,18 +5,18 @@ services:
       context: ./backend
     restart: always
     networks: [app]
-    ports: ['5000:5000']
     volumes:
      - /home/ubuntu/clusters:/backend/clusters
     secrets:
      - source: mercury-key
        target: /root/.ssh/id_rsa
+     - source: openrc
+       target: ./backend
   launcher-frontend:
     build:
       context: ./frontend
     restart: always
     networks: [app]
-    ports: ['8080:8080']
     depends_on: [launcher-backend]
   nginx:
     image: nginx
@@ -34,7 +34,8 @@ services:
 secrets:
   mercury-key:
     file: id_rsa
-
+  openrc:
+    file: ./backend/hgi-openrc.sh
 networks:
   app:
     ipam:
