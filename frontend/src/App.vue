@@ -1,75 +1,52 @@
 <template>
   <div id="app">
     <div class="main" v-show='!this.status'>
+      <!--
+         This section of the code displays the Down Screen
+       -->
       <div v-show='!this.pending'>
-        <div class="header">
-          <div class="header-text">
-            <p>Date/Time: </p>
-          </div>
-        </div>
-        <input type="publicKey" v-model="pkey" placeholder="Public Key" disabled>
-        <input type="numOfWorkers" v-model="workers" placeholder="Number of Workers">
-        <input type="pass" v-model="password" placeholder="Password">
-        <input type="flavour" v-model="flavour" placeholder="Flavour">
-        <input type="tenants" v-model="tenant" placeholder="Tenant">
-        <v-button :status=this.status :pubkey=this.pkey :workers=this.workers :password=this.password :flavor=this.flavour
-           @update-status="update"> Launch Cluster </v-button>
+        <DownScreen :status=this.status :pending=this.pending @update-status="update"></DownScreen>
       </div>
       <!--
          This section of the code displays the pending creation screen 
        -->
       <div v-show='this.pending'>
-        <div class="header">
-          <div class="header-text">
-            <p>This Cluster is Pending Creation: Please refresh the page in 7-10 minutes from your initial launch of the cluster </p>
-          </div>
-        </div>
+        <PendingUpScreen></PendingUpScreen>
       </div>
     </div>
     
     <div v-show='this.status'>
+      <!--
+         This section of the code displays the Up Screen
+       -->
       <div v-show='!this.pending'>
-        <div class="header">
-          <div class="header-text">
-            <p>Date/Time: </p>
-          </div>
-          <d-button :status=this.status :pubkey=this.pkey :workers=this.workers :password=this.password :flavor=this.flavour
-            @update-status="update"> Destroy Cluster </d-button>      
-        </div>
-        <div class="hyperlink" style="text-align: center;"> 
-          <h1> Cluster Links </h1>
-          <a :href="'https://'+this.ip+'/jupyter'">Jupyter Lab<br></a>
-          <a :href="'https://'+this.ip+'/spark'">Spark<br></a>
-          <a :href="'https://'+this.ip+'/sparkhist'">Spark History<br></a>
-          <a :href="'https://'+this.ip+'/hdfs'">HDFS<br></a>
-          <a :href="'https://'+this.ip+'/yarn'">YARN<br></a>
-          <a :href="'https://'+this.ip+'/mapreduce'">MapReduce History<br></a>
-          <a :href="'https://'+this.ip+'/netdata'">Netdata Metrics<br></a>
-        </div>
+        <UpScreen :status=this.status :ip=this.ip @update-status="update"></UpScreen>
       </div>
       <!--
         *  This section of the code displays the pending deletion screen 
       -->
       <div v-show='this.pending'>
-        <div class="header">
-          <div class="header-text">
-            <p>This Cluster is Pending Deletion: Please refresh the page in 4-6 minutes from your initial press of the 'Delete Cluster' button </p>
-          </div>
-        </div>
+        <PendingDownScreen></PendingDownScreen>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-  import Button from './components/CreateButton.vue'
-  import DButton from './components/DestroyButton.vue'
   import axios from 'axios'
+
+  import DownScreen from './components/DownScreen.vue'
+  import UpScreen from './components/UpScreen.vue'
+  import PendingUpScreen from './components/PendingUpScreen.vue'
+  import PendingDownScreen from './components/PendingDownScreen.vue'
+
   export default {
     name: 'App',
     components: {
-      'v-button': Button,
-      'd-button': DButton
+      'DownScreen': DownScreen,
+      'UpScreen': UpScreen,
+      'PendingUpScreen': PendingUpScreen,
+      'PendingDownScreen': PendingDownScreen
     },
     data: () => ({
       pkey:     '',
@@ -77,7 +54,6 @@
       password: '',
       flavour:  '',
       tenant:   '',
-      url: 'www.google.com',
       status: false,
       pending: true,
       ip: ''
@@ -87,37 +63,28 @@
         this.pending= !this.pending;
       },
       clusterCheck: function() {
-        console.log(process.env.VUE_APP_BACKEND_API_URL)
         const requestOptions = { status: this.status }
-        axios.post(process.env.VUE_APP_BACKEND_API_URL + '/hail/frontend/status', requestOptions)
+        axios.get(process.env.VUE_APP_BACKEND_API_URL + '/hail/frontend/status', requestOptions)
             .then((response) => {
-              console.log(response.data.status)
+
               if (response.data.status == 'down') {
-                console.log(this.status)
                 this.pending=false
                 this.status=false
-                console.log(this.status)
               }
               else if (response.data.status == 'pending') {
-                console.log(response.data.pending)
                 if (response.data.pending == "UP") {
-                  console.log(this.status)
                   this.pending=true
                   this.status=false
                 }
                 else if (response.data.pending == "DOWN") {
-                  console.log(this.status)
                   this.pending=true
                   this.status=true
                 }
               }
               else if (response.data.status == 'up') {
-                console.log(this.status)
                 this.pending=false
                 this.status=true
-                console.log(this.status)
                 this.ip = response.data.cluster_ip
-                console.log(this.ip)
               }
               else {
                 console.log("Returned unexpected status from server")
@@ -181,5 +148,23 @@
     font-family: Avenir, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  .Button{
+    font-size:24px;
+    color: white;
+    margin: 4px 2px;
+    text-align: center;
+    display: inline-block;
+    background-color: #4CAF50;
+  }
+  .DButton{
+    font-size: 24px;
+    color: white;
+    margin: 10px;
+    text-align: center;
+    display: inline-block;
+    background-color: #DE0909;
+    position: relative;
+    float: right;
   }
 </style>
