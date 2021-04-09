@@ -11,12 +11,12 @@ from os import path
 
 import network
 
-
-username="an12"
 DEBUG = True
 
 async def startup(request):
-  #Request returned from the frontend is in the form:
+  username = "an12"
+
+  #Attributes returned from the frontend is in the form:
   # {
   #   public_key: String,
   #   workers: String,
@@ -25,6 +25,26 @@ async def startup(request):
   #   status: Boolean
   # }
   attributes = await request.json()
+
+  jobs = request.app["jobs"]
+  pool = request.app["pool"]
+  print(attributes)
+
+  jobs[job_key(username, "main")] = pool.submit(cluster_creator, request, attributes, username)
+
+
+  return web.Response(text="Cluster Creation in Progress")
+
+
+def cluster_creator(request, attributes, username):
+  #Request returned from the frontend is in the form:
+  # {
+  #   public_key: String,
+  #   workers: String,
+  #   password: String,
+  #   flavor: String,
+  #   status: Boolean
+  # }
 
   jobs = request.app["jobs"]
   pool = request.app["pool"]
@@ -51,15 +71,14 @@ async def startup(request):
       print("A cluster is already registered - an error has occured!")
     else:
       request.app["status"]="UP"
-      create_network(conn)
+      create_network(conn, username)
       #Job Tuple for launching clusters. Useful for checking status of jobs and their state
-      jobs[username] =( pool.submit(run, ['bash', 'cluster-creation.sh', username, attributes["password"], attributes["workers"], attributes["flavor"]]),
+      jobs[job_key(username, "cluster")] =( pool.submit(run, ['bash', 'cluster-creation.sh', username, attributes["password"], attributes["workers"], attributes["flavor"]]),
          "UP")
       if DEBUG:
-        print(jobs[username][0].result())
+        print(jobs[job_key(username, "cluster")][0].result())
       print("Cluster Creation in Progress")
 
-  return web.Response(text="Cluster Creation in Progress")
 
 
 async def tear_down(request):
@@ -69,6 +88,9 @@ async def tear_down(request):
   # }
   attributes = await request.json()
   print(attributes)
+
+  username = "an12"
+
   jobs = request.app["jobs"]
   pool = request.app["pool"]
 
@@ -82,7 +104,7 @@ async def tear_down(request):
       jobs[username] = ( pool.submit(run, ['bash', 'cluster-deletion.sh', username]), "DOWN")
       if DEBUG:
         print(jobs[username][0].result())
-      output = pool.submit(destroy_network, conn)
+      output = pool.submit(destroy_network, conn, username)
       print("Cluster Deletion in Progress")
 
     else:
@@ -93,6 +115,9 @@ async def tear_down(request):
 
 async def job_status(request):
   jobs = request.app["jobs"]
+
+  username = "an12"
+
   credentials = get_credentials()
   conn = openstack.connect(**credentials)
   print(request)
@@ -150,8 +175,10 @@ async def job_status(request):
 def run(cmd):
   return subprocess.run(cmd, capture_output=True, text=True)
 
+def job_key(user, job_type):
+  return f"{user}.{job_type}"
 
-def create_network(conn):
+def create_network(conn, username):
   network_name = username+"-cluster-network"
   network_list = [network.name for network in conn.network.networks()]
 
@@ -160,7 +187,7 @@ def create_network(conn):
   else:
     network.create(username)
 
-def destroy_network(conn):
+def destroy_network(conn, username):
   prefix = username+"-cluster"
   network_name = prefix + "-network"
 

@@ -131,4 +131,3 @@ def destroy(username):
     pass
   db.commit()
   db.close()
-
