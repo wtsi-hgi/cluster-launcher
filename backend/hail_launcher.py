@@ -1,25 +1,51 @@
-from network import create
-from network import destroy
- 
-from aiohttp import web
-from concurrent.futures import ThreadPoolExecutor
-from os import path
-import asyncio
 import json
-import openstack
-import os.path
 import subprocess
 import time
 
-username="an12"
-DEBUG = True
+import asyncio
+import openstack
+import os
+from aiohttp import web
+from concurrent.futures import ThreadPoolExecutor
+from os import path
+
+import network
+
+DEBUG = False
 
 async def startup(request):
+  username = "an12"
+
+  #Request returned from the frontend is in the form:
+  # {
+  #   public_key: String,
+  #   workers: String,
+  #   password: String,
+  #   flavor: String,
+  #   status: Boolean
+  # }
   attributes = await request.json()
+
+  #Initialise the Pool and Jobs dictionary as variables
   jobs = request.app["jobs"]
   pool = request.app["pool"]
 
-  print(attributes)
+  #Creates a thread with cluster creation code to prevent blocking the handler
+  jobs[username] = ( pool.submit(cluster_creator, request, attributes, username), "UP" )
+
+
+  return web.Response(text="Cluster Creation in Progress")
+
+
+def cluster_creator(request, attributes, username):
+  #Attributes passed in the form:
+  # {
+  #   public_key: String,
+  #   workers: String,
+  #   password: String,
+  #   flavor: String,
+  #   status: Boolean
+  # }
 
   with open('public_key.pub', 'w') as key_file:
     key_file.write(attributes["public_key"])
@@ -27,84 +53,103 @@ async def startup(request):
   credentials = get_credentials()
   conn = openstack.connect(**credentials)
 
-  flavor_names = (getFlavors(conn))
+  flavors=conn.list_flavors()
+  flavor_names = [str(flavor.name) for flavor in flavors if flavor.id is not None]
 
-  if attributes["flavor"] in flavor_names:
-    print(attributes["flavor"])
-  else:
+  if attributes["flavor"] not in flavor_names:
+    #If the flavor provided by the user is not a valid flavor
+    #it'll be switched for m2.medium
     print("Invalid Flavor - Switching to default")
-    flavor_id = "m2.medium"
+    attributes["flavor"] = "m2.medium"
 
   if attributes["status"] == False:
     if path.exists('/backend/clusters/'+username):
+      #Implement better logging system for errors
+      #This error indicates the cluster still exists despite the codebase believing it to be down
       print("A cluster is already registered - an error has occured!")
     else:
-      request.app["status"]="UP"
-      create_network(conn)
-      #Job Tuple for launching clusters. Useful for checking status of jobs and their state
-      jobs[username] =( pool.submit(run, ['bash', 'user-creation.sh', username, attributes["password"], attributes["workers"], attributes["flavor"]]),
-         "UP")
-      if DEBUG:
-        print(jobs[username][0].result())
-      print("Cluster Creation in Progress")
+      #Creates the user's network
+      create_network(conn, username)
 
-  return web.Response(text="Received")
+      #Run the cluster creation bash script
+      subprocess.run(['bash', 'cluster-creation.sh', username, attributes["password"], attributes["workers"], attributes["flavor"]], capture_output=True, text=True)
 
 
 async def tear_down(request):
+  #Request returned from the frontend is in the form:
+  # {
+  #   status: Boolean
+  # }
   attributes = await request.json()
-  print(attributes)
+
+  username = "an12"
+
+  #Initialise the Pool and Jobs dictionary as variables
   jobs = request.app["jobs"]
   pool = request.app["pool"]
 
+  #Start a Thread with cluster deletion code to prevent blocking the handler
+  jobs[username] = ( pool.submit(cluster_deletion, request, attributes, username), "DOWN" )
+
+  return web.Response(text="Cluster Deletion in Progress")
+
+
+def cluster_deletion(request, attributes, username):
+  #Take OpenStack credentials from the OS_* environment variables and create a connection object
   credentials = get_credentials()
   conn = openstack.connect(**credentials)
 
   if attributes["status"] == True:
     if path.exists('/backend/clusters/'+username):
-      request.app["status"]="DOWN"
       #Job Tuple for destroying clusters. Useful for checking status of jobs and their state
-      jobs[username] = ( pool.submit(run, ['bash', 'cluster-deletion.sh', username]), "DOWN")
-      if DEBUG:
-        print(jobs[username][0].result())
-      output = pool.submit(destroy_network, conn)
+      subprocess.run(['bash', 'cluster-deletion.sh', username], capture_output=True, text=True)
+
+      destroy_network(conn, username)
       print("Cluster Deletion in Progress")
 
     else:
+      #Improve Logging for Error Messages
+      #This error is called if there is no cluster to delete but the backend believes it exists
       print("No cluster exists - an error has occured")
-
-  return web.Response(text="Received")
 
 
 async def job_status(request):
+  #Assign the Jobs Dictionary to the variable jobs
   jobs = request.app["jobs"]
+  print(jobs)
+
+  username = "an12"
+  #Take OpenStack credentials from the OS_* environment variables and create a connection object
   credentials = get_credentials()
   conn = openstack.connect(**credentials)
-  print(request)
+
   path_to_cluster_ip = '/backend/clusters/' + username + '/osdataproc/terraform/terraform.tfstate.d/' + username + '/outputs.json'
 
+  # In the event of the container going down and being brought back up, jobs will be empty
+  # This catches clusters if they're up in this eventuality
   if username not in jobs:
-    print("Down")
     if path.exists(path_to_cluster_ip):
       with open(path_to_cluster_ip) as json_file:
         data = json.load(json_file)
         cluster_ip = data["spark_master_public_ip"]["value"]
-        print(cluster_ip)
+      # Returns this response if the cluster is up
       return web.json_response({
         "status": "up",
         "cluster_ip": cluster_ip
       })
     else:
+      # Returns this response if the cluster is down
       return web.json_response({
         "status": "down"
       })
 
   else:
     job = jobs[username][0]
-
     if job.done():
+      # Returns this response if the cluster is up
       if jobs[username][1] == "UP":
-        print("UP DONE")
+        print(jobs[username][1])
+        #Reads the Master Public IP ready for sending to the frontend
         with open(path_to_cluster_ip) as json_file:
           data = json.load(json_file)
           cluster_ip = data["spark_master_public_ip"]["value"]
@@ -112,70 +157,46 @@ async def job_status(request):
           "status": "up",
           "cluster_ip": cluster_ip
         })
+
+      # Returns this response if the cluster is down
       elif jobs[username][1] == "DOWN":
-        print("DOWN DONE")
+        print(jobs[username][1])
         return web.json_response({
           "status": "down"
         })
 
+    # Returns this response if the cluster is in a pending state
+    # The "pending" attribute determines whether the cluster is in a UP or DOWN pending phase
     if job.running():
-      print("Pending")
       return web.json_response({
         "status": "pending",
-        "pending": request.app["status"]
+        "pending": jobs[username][1]
       })
 
-def run(cmd):
-  return subprocess.run(cmd, capture_output=True, text=True)
 
-
-def create_network(conn):
+def create_network(conn, username):
   network_name = username+"-cluster-network"
-  network_list = list_networks(conn)
+  network_list = [network.name for network in conn.network.networks()]
 
   if network_name in network_list:
     print("Network Exists")
   else:
-    create(username)
+    network.create(username)
 
-def destroy_network(conn):
+
+def destroy_network(conn, username):
   prefix = username+"-cluster"
   network_name = prefix + "-network"
 
-  network_list = list_networks(conn)
+  network_list = [network.name for network in conn.network.networks()]
 
   if network_name in network_list:
-    time.sleep(200)
-    destroy(username)
+    network.destroy(username)
   else:
     print("Network doesn't exist")
 
 
-def list_networks(conn):
-  network_list = []
-
-  try:
-    for network in conn.network.networks():
-        network_list.append(network.name)
-  except:
-    raise Exception("An issue with connecting to OpenStack has occured when listing networks")
-  return network_list
-
-def getFlavors(conn):
-    flavors=conn.list_flavors()
-    ListOfFlavors = []
-    for flavor in flavors:
-        if flavor.id is not None:
-            #flavorMap = {}
-            #flavorMap['Id'] = flavor.id
-            #flavorMap['Name'] = flavor.name
-            #category = flavor.name.split('.')
-            #flavorMap['Category'] = category[0]
-            ListOfFlavors.append(str(flavor.name))
-
-    return ListOfFlavors
-
-
+#Obtain the OpenStack credentials from the environment
 def get_credentials():
   d = {}
   try:

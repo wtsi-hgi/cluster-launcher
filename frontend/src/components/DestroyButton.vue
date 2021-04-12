@@ -1,7 +1,7 @@
 <template>
-<button @click="onClick" class="DButton">
-  <slot>Button</slot>
-</button>
+  <button @click="onClick" class="DButton">
+    <slot>Button</slot>
+  </button>
 </template>
 
 <script>
@@ -20,11 +20,7 @@
         axios.post("/cluster-launcher/api/hail/frontend/destroy", requestOptions)
           .then(response => this.requestOptionsID = response.data.id);
           
-        let newStatus = this.status
-        console.log("status = " + newStatus)
-        newStatus =! newStatus
         this.$emit("update-status")
-        console.log(newStatus)
       }      
     }
   }

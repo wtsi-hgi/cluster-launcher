@@ -1,10 +1,12 @@
-from aiohttp import web
-from concurrent.futures import ThreadPoolExecutor
-import asyncio
 import json
 
-import routes
+import asyncio
 import subprocess
+from aiohttp import web
+from concurrent.futures import ThreadPoolExecutor
+
+import routes
+
 
 
 async def shutdown(app):

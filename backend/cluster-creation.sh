@@ -10,5 +10,4 @@ mkdir /backend/clusters/"${username}"
 cd /backend/clusters/"${username}"
 git clone https://github.com/wtsi-hgi/osdataproc.git
 cd osdataproc
-pip install -e .
-python osdataproc.py create "${username}" --public-key /backend/mercury-key.pub --flavour "${flavor}" --num-workers "${workers}" --network-name "${network_name}" <<< "${password}"
+python osdataproc.py create "${username}" --public-key /backend/mercury-key.pub --image-name bionic-server --flavour "${flavor}" --num-workers "${workers}" --network-name "${network_name}" <<< "${password}"
