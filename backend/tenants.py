@@ -1,5 +1,3 @@
-#from constants import DATABASE_NAME
-DATABASE_NAME = "../../clusters/cluster-networking.db"
 import argparse
 import os
 import sqlite3
@@ -7,6 +5,7 @@ import yaml
 
 from prettytable import PrettyTable
 
+from constants import DATABASE_NAME
 
 parser = argparse.ArgumentParser(description="Cluster Launcher User Manager - A system to view, edit and manage the user database associated with the Cluster Launcher.")
 subparsers = parser.add_subparsers(dest='subparser')
@@ -31,6 +30,9 @@ tenant_subparsers = parser_tenant.add_subparsers(dest='options')
 parser_add_tenant = tenant_subparsers.add_parser('populate', help="Populate the Tenant's Table from tenants_conf.yml")
 parser_remove_tenant = tenant_subparsers.add_parser('depopulate', help="Remove all rows in the Tenant's Table")
 
+parser_search_tenant = tenant_subparsers.add_parser('search', help="Find a Tenant's ID")
+parser_search_tenant.add_argument('tenant_name', nargs=1, help="Name of Tenant")
+
 #Add users to the Tenant Table
 parser_associate_user = subparsers.add_parser('link', help="Add a User to the Tenant's Database")
 parser_associate_user.add_argument('user', nargs=1, help="Username of the user to add")
@@ -41,6 +43,10 @@ parser_deassociate_user = subparsers.add_parser('delink', help="Remove a User fr
 parser_deassociate_user.add_argument('user', help="Username of the user to remove")
 parser_deassociate_user.add_argument('tenant_id', help="ID of the tenant to remove the user from")
 
+parser_search = subparsers.add_parser('search', help="Search to find a user-tenant mapping")
+parser_search.add_argument('user', help="Username of the user to remove")
+parser_search.add_argument('tenant_name', help="ID of the tenant to remove the user from")
+
 #Parser for outputting information to users
 parser_list = subparsers.add_parser('list', help="List information stored in tables")
 list_subparsers = parser_list.add_subparsers(dest='options')
@@ -50,6 +56,10 @@ parser_list_tenants = list_subparsers.add_parser('tenant')
 parser_list_users = list_subparsers.add_parser('user')
 #Output mapping table information
 parser_list_mappings = list_subparsers.add_parser('mapping')
+#Output clusters table information
+clusters_list_mappings = list_subparsers.add_parser('clusters')
+#Output networks table information
+networks_list_mappings = list_subparsers.add_parser('networks')
 
 def initialise_database():
   #Initialise the database by creating the SQL tables if not present already
@@ -157,7 +167,7 @@ def display_tenants():
   db = sqlite3.connect(DATABASE_NAME)
   cursor = db.cursor()
 
-  cursor.execute("SELECT * from tenants")
+  cursor.execute("SELECT * from tenants ORDER BY tenants_name")
   results = cursor.fetchall()
 
   table = PrettyTable()
@@ -170,13 +180,14 @@ def display_tenants():
 
   print(table)
 
+  db.close()
 
 def display_users():
   initialise_database()
   db = sqlite3.connect(DATABASE_NAME)
   cursor = db.cursor()
 
-  cursor.execute("SELECT * from users")
+  cursor.execute("SELECT * from users ORDER BY username")
   results = cursor.fetchall()
 
   table = PrettyTable()
@@ -188,12 +199,14 @@ def display_users():
 
   print(table)
 
+  db.close()
+
 def display_mapping():
   initialise_database()
   db = sqlite3.connect(DATABASE_NAME)
   cursor = db.cursor()
 
-  cursor.execute("SELECT * from user_tenant_mapping")
+  cursor.execute("SELECT * from user_tenant_mapping ORDER BY username")
   results = cursor.fetchall()
 
   table = PrettyTable()
@@ -205,11 +218,94 @@ def display_mapping():
 
   print(table)
 
+  db.close()
+
+def display_clusters():
+  initialise_database()
+  db = sqlite3.connect(DATABASE_NAME)
+  cursor = db.cursor()
+
+  cursor.execute("SELECT * from clusters ORDER BY username")
+  results = cursor.fetchall()
+
+  table = PrettyTable()
+  table.field_names = ["Username", "Tenant Name", "Cluster IP", "Number of Workers"]
+
+  for clusters in results:
+    row = [str(clusters[0]), str(clusters[1]), str(clusters[2]), str(clusters[3])]
+    table.add_row(row)
+
+  print(table)
+
+  db.close()
+
+def display_networks():
+  initialise_database()
+  db = sqlite3.connect(DATABASE_NAME)
+  cursor = db.cursor()
+
+  cursor.execute("SELECT * from networking ORDER BY user_name")
+  results = cursor.fetchall()
+
+  table = PrettyTable()
+  table.field_names = ["Username", "Network ID", "Subnet ID", "Router ID", "Tenant"]
+
+  for networks in results:
+    row = [str(networks[0]), str(networks[1]), str(networks[2]), str(networks[3]), str(networks[4])]
+    table.add_row(row)
+
+  print(table)
+
+  db.close()
+
+
+def search_user(user, tenant_name):
+  initialise_database()
+  db = sqlite3.connect(DATABASE_NAME)
+  cursor = db.cursor()
+
+  with open('tenants_conf.yml', 'r') as tenant_file:
+    data = yaml.load(tenant_file, Loader=yaml.Loader)
+  tenant_id = data['tenants'].get(tenant_name)
+  print(user)
+  print(tenant_name)
+  print(tenant_id)
+  cursor.execute("SELECT * from user_tenant_mapping WHERE username = ? AND tenant_id = ?",(user,tenant_id))
+  result = cursor.fetchall()
+  print(result)
+  db.close()
+
+  if result == []:
+    return False
+  else:
+    return True
+
+def fetch_id(tenant_name):
+  initialise_database()
+  db = sqlite3.connect(DATABASE_NAME)
+  cursor = db.cursor()
+
+  cursor.execute("SELECT tenants_id from tenants WHERE tenants_name = ?", [tenant_name])
+  tenant_id = cursor.fetchall()
+
+  return tenant_id[0][0]
+
+
+#THIS CODE IS DELETABLE AND SHOULD ONLY BE USED DURING TESTING TO DELETE A SPECIFIC CLUSTER
+def remove_cluster():
+#  initialise_cluster_table()
+
+  db = sqlite3.connect(DATABASE_NAME)
+  cursor = db.cursor()
+
+  cursor.execute("DROP TABLE networking")
+
+  db.commit()
+  db.close()
 
 
 if __name__ == '__main__':
   args = parser.parse_args()
-
   #Manage Users Table
   if args.subparser == "user":
     #Add a user to the user's table
@@ -225,6 +321,8 @@ if __name__ == '__main__':
       populate_tenants()
     if args.options == "depopulate":
       depopulate_tenants()
+    if args.options == "search":
+      fetch_id(args.tenant_name[0])
 
   #Add links in the User-Tenant Mapping Table
   if args.subparser == "link":
@@ -242,3 +340,10 @@ if __name__ == '__main__':
       display_users()
     if args.options == "mapping":
       display_mapping()
+    if args.options == "clusters":
+      display_clusters()
+    if args.options == "networks":
+      display_networks()
+
+  if args.subparser == "search":
+    search_user(args.user, args.tenant_name)

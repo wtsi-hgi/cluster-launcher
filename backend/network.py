@@ -6,34 +6,35 @@ from keystoneauth1 import identity, session
 from neutronclient.v2_0 import client
 
 
-def _neutron():
-    creds = {
-        "auth_url":          os.environ["OS_AUTH_URL"] + "/v3",
-        "username":          os.environ["OS_USERNAME"],
-        "password":          os.environ["OS_PASSWORD"],
-        "project_name":      os.environ["OS_PROJECT_NAME"],
-        "project_domain_id": "default",  # OS_PROJECT_DOMAIN_ID
-        "user_domain_id":    "default"   # OS_USER_DOMAIN_NAME fails; case-dependent
-    }
+def _neutron(tenant_name):
+  creds = {
+    "auth_url":          os.environ["OS_AUTH_URL"] + "/v3",
+    "username":          os.environ["OS_USERNAME"],
+    "password":          os.environ["OS_PASSWORD"],
+    "project_name":      tenant_name,
+    "project_domain_id": "default",  # OS_PROJECT_DOMAIN_ID
+    "user_domain_id":    "default"   # OS_USER_DOMAIN_NAME fails; case-dependent
+  }
 
-    return client.Client(session=session.Session(auth=identity.Password(**creds)))
+  return client.Client(session=session.Session(auth=identity.Password(**creds)))
 
-def initialise_database(username):
+def initialise_database(username, tenant_name):
   #Initialise the database by creating the SQL tables if not present already
   db = sqlite3.connect(DATABASE_NAME)
   cursor = db.cursor()
 
   cursor.execute('''
     CREATE TABLE IF NOT EXISTS networking(
-      user_name TEXT PRIMARY KEY,
-      network_id TEXT,
-      subnet_id TEXT,
-      router_id TEXT,
-      cluster_ip TEXT
+      user_name TEXT NOT NULL,
+      network_id TEXT NOT NULL,
+      subnet_id TEXT NOT NULL,
+      router_id TEXT NOT NULL,
+      tenant_name TEXT NOT NULL,
+      PRIMARY KEY (user_name, tenant_name)
     )
   ''')
 
-  cursor.execute('''SELECT * FROM networking WHERE user_name = ?''',(username,))
+  cursor.execute('''SELECT * FROM networking WHERE user_name = ? AND tenant_name = ?''',(username, tenant_name,))
 
   db.commit()
   db.close()
@@ -41,10 +42,10 @@ def initialise_database(username):
 # Due to IP Limitations, each cluster is created with its own network to allow the maximum
 # number of worker nodes to be created per user. This function will assume that no
 # existing network exists, pertaining to checks in hail_launcher.py
-def create(username):
+def create(username, tenant_name):
   prefix = username+"-cluster"
-  neutron = _neutron()
-  initialise_database(username)
+  neutron = _neutron(tenant_name)
+  initialise_database(username, tenant_name)
 
   # Get the externally routed network
   public = neutron.list_networks(retrieve_all=True, **{
@@ -83,21 +84,21 @@ def create(username):
   cursor = db.cursor()
 
   cursor.execute('''INSERT INTO
-    networking(user_name, network_id, subnet_id, router_id, cluster_ip)
-    VALUES(?, ?, ?, ?, "Undefined")''',
-    (username, network["id"], subnet["id"], router["id"]))
+    networking(user_name, network_id, subnet_id, router_id, tenant_name)
+    VALUES(?, ?, ?, ?, ?)''',
+    (username, network["id"], subnet["id"], router["id"], tenant_name))
 
   db.commit()
   db.close()
 
 # This function will assume that no existing network exists, pertaining to
 # checks in hail_launcher.py
-def destroy(username):
+def destroy(username, tenant_name):
   db = sqlite3.connect(DATABASE_NAME)
   cursor = db.cursor()
-  initialise_database(username)
+  initialise_database(username, tenant_name)
 
-  neutron = _neutron()
+  neutron = _neutron(tenant_name)
   prefix = username+"-cluter"
   network_name = prefix+"-network"
 
@@ -106,8 +107,8 @@ def destroy(username):
     cursor.execute('''
       SELECT network_id, subnet_id, router_id
       FROM networking
-      WHERE user_name = ?
-    ''',(username,))
+      WHERE user_name = ? AND tenant_name = ?
+    ''',(username, tenant_name))
 
     network_id, subnet_id, router_id = cursor.fetchone()
 
@@ -119,7 +120,7 @@ def destroy(username):
     neutron.delete_subnet(subnet_id)
     neutron.delete_network(network_id)
 
-    cursor.execute('''DELETE FROM networking WHERE user_name= ?''',(username,))
+    cursor.execute('''DELETE FROM networking WHERE user_name= ? AND tenant_name = ?''',(username, tenant_name))
     print("Network deconstructed")
 
   except sqlite3.OperationalError:
