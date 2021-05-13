@@ -10,34 +10,61 @@
     <input type="numOfWorkers" v-model="workers" placeholder="Number of Workers">
     <input type="pass" v-model="password" placeholder="Password">
     <input type="flavour" v-model="flavour" placeholder="Flavour">
-    <input type="tenants" v-model="tenant" placeholder="Tenant">
-    <v-button :status=this.status :pubkey=this.pkey :workers=this.workers :password=this.password :flavor=this.flavour
-      v-on="$listeners"> Launch Cluster </v-button>
+    <DropDown :tenant=this.tenant :volumes=this.volumes :choices=this.choices @enable-box="enableBox" @disable-box="disableBox"></DropDown>
+    <input type="volSize" v-model="volSize" :disabled=this.boxDisabled placeholder="Volume Size">
+    <v-button :status=this.status :boxDisabled=this.boxDisabled :volSize=this.volSize :pubkey=this.pkey :workers=this.workers :password=this.password :flavor=this.flavour
+      :volumes=this.volumes :tenant=this.tenant v-on="$listeners"> Launch Cluster </v-button>
   </div>
 </template>
 
 <script>
+  import axios from 'axios'
   import Button from './Button.vue'
+  import DropDown from './DropDown.vue'
   export default {
     name: 'App',
     components: {
       'v-button': Button,
+      'DropDown': DropDown,
     },
     data: () => ({
       pkey:     '',
       workers:  '',
       password: '',
       flavour:  '',
-      tenant:   ''
+      tenant:   '',
+      volSize:  '',
+      boxDisabled: true,
+      choices: [],
+      volumes: {}
     }),
     props: {
       status: {type: Boolean},
       pending: {type: Boolean}
     },
     methods:{
-      update(){
+      update: function() {
         this.pending= !this.pending;
+      },
+      enableBox: function(choice) {
+        this.boxDisabled = true
+        this.tenant = choice
+      },
+      disableBox: function(choice) {
+        this.boxDisabled = false
+        this.tenant = choice
+      },
+      checkMappings: function() {
+        const requestOptions = { }
+        axios.get(process.env.VUE_APP_BACKEND_API_URL + '/hail/frontend/checkMappings', requestOptions)
+          .then((response) => {
+            this.volumes = response.data
+            this.choices = Object.keys(response.data)
+          })
       }
+    },
+    created() {
+      this.checkMappings()
     }
   }
 </script>

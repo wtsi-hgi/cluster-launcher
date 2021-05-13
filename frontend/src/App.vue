@@ -106,23 +106,7 @@
     text-align: center;
     color: #2c3e50 !important;
   }
-  input[type=flavour] {
-    width: 45%;
-    margin: 10px;
-  }
-  input[type=publicKey] {
-    width: 45%;
-    margin:10px;
-  }
-  input[type=numOfWorkers] {
-    width: 45%;
-    margin: 10px;
-  }
-  input[type=pass] {
-    width: 45%;
-    margin: 10px;
-  }
-  input[type=tenants] {
+  input {
     width: 45%;
     margin: 10px;    
   }
