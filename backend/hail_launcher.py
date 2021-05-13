@@ -12,10 +12,10 @@ from concurrent.futures import ThreadPoolExecutor
 from os import path
 
 import network
-import tenants
+import database
 from constants import DATABASE_NAME
 
-DEBUG = False
+DEBUG = True
 
 async def startup(request):
 
@@ -26,13 +26,16 @@ async def startup(request):
     username = "an12"
 
   #Request returned from the frontend is in the form:
+  #The Request will either specify volSize or the volume_name, not both
   # {
   #   public_key: String,
   #   workers: String,
   #   password: String,
   #   flavor: String,
   #   tenant: String,
-  #   status: Boolean
+  #   status: Boolean,
+  #   volSize: Integer - Not Required,
+  #   volume_name: String - Not Required
   # }
   attributes = await request.json()
 
@@ -40,7 +43,7 @@ async def startup(request):
   jobs = request.app["jobs"]
   pool = request.app["pool"]
 
-  tenant_verification = tenants.search_user(username, attributes['tenant'])
+  tenant_verification = database.search_user(username, attributes['tenant'])
   print(tenant_verification)
   if tenant_verification == False:
     return web.Response(text="Unverified User")
@@ -60,6 +63,8 @@ def cluster_creator(request, attributes, username):
   #   password: String,
   #   flavor: String,
   #   status: Boolean
+  #   volSize: Integer - Not Required,
+  #   volume_name: String - Not Required
   # }
 
 #  with open('public_key.pub', 'w') as key_file:
@@ -78,6 +83,7 @@ def cluster_creator(request, attributes, username):
     print("Invalid Flavor - Switching to default")
     attributes["flavor"] = "m2.medium"
 
+
   if attributes["status"] == False:
     if path.exists('/backend/clusters/'+username):
       #Implement better logging system for errors
@@ -86,9 +92,25 @@ def cluster_creator(request, attributes, username):
     else:
       #Creates the user's network
       create_network(conn, username, attributes['tenant'])
-      tenant_id = tenants.fetch_id(attributes['tenant'])
+      tenant_id = database.fetch_id(attributes['tenant'])
       #Run the cluster creation bash script
-      process = subprocess.run(['bash', 'cluster-creation.sh', username, attributes["password"], attributes["workers"], attributes["flavor"]], env = osdataproc_creds, capture_output=True, text=True)
+      if "volume_name" in attributes:
+        #Volume Size is set to zero if volume exists for the user in the tenant
+        volume_size = '0'
+        print("You already have a volume in this tenant, using: " + attributes['volume_name'])
+        process = subprocess.run(['bash', 'cluster-creation.sh', username, attributes["password"],
+                                 attributes["workers"], attributes["flavor"], attributes["volume_name"],
+                                 volume_size], env = osdataproc_creds, capture_output=True, text=True)
+      else:
+        #If the user does not have a volume in the tenant, one is created for them
+        #in the schema of USERNAME-cluster-volume
+        volume_name = username+'-cluster-volume'
+        database.add_volume(username, attributes['tenant'], volume_name)
+        print("Creating Volume called: " + volume_name + " of size: " + attributes["volSize"])
+        process = subprocess.run(['bash', 'cluster-creation.sh', username, attributes["password"],
+                                 attributes["workers"], attributes["flavor"], volume_name,
+                                 attributes["volSize"]],
+                                 env = osdataproc_creds, capture_output=True, text=True)
       if DEBUG:
         print(process)
 
@@ -139,7 +161,7 @@ def cluster_deletion(request, attributes, username):
 
   if attributes["status"] == True:
     if path.exists('/backend/clusters/'+username):
-      tenant_id = tenants.fetch_id(tenant_name)
+      tenant_id = database.fetch_id(tenant_name)
       #Job Tuple for destroying clusters. Useful for checking status of jobs and their state
       process = subprocess.run(['bash', 'cluster-deletion.sh', username], env= osdataproc_creds, capture_output=True, text=True)
       if DEBUG:
@@ -243,7 +265,7 @@ def destroy_network(conn, username, tenant_name):
 def get_credentials(tenant_name):
   d = {}
   try:
-    tenant_id = tenants.fetch_id(tenant_name)
+    tenant_id = database.fetch_id(tenant_name)
     d['version']  = "2"
     d['username'] = os.environ['OS_USERNAME']
     d['api_key'] = os.environ['OS_PASSWORD']
@@ -257,7 +279,7 @@ def get_credentials(tenant_name):
 def env_credentials(tenant_name):
   creds = {**os.environ}
   try:
-    tenant_id = tenants.fetch_id(tenant_name)
+    tenant_id = database.fetch_id(tenant_name)
     creds['OS_AUTH_URL'] = os.environ['OS_AUTH_URL']
     creds['OS_IDENTITY_API_VERSION'] = os.environ['OS_IDENTITY_API_VERSION']
     creds['OS_USER_DOMAIN_NAME'] = os.environ['OS_USER_DOMAIN_NAME']

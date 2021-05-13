@@ -10,8 +10,12 @@ services:
     secrets:
      - source: mercury-key
        target: /root/.ssh/id_rsa
+     - source: mercury-key-pub
+       target: /backend/mercury-key.pub
      - source: openrc
-       target: ./backend
+       target: /backend/hgi-openrc.sh
+     - source: tenants_secret
+       target: /backend/tenants_conf.yml
   launcher-frontend:
     build:
       context: ./frontend
@@ -34,8 +38,12 @@ services:
 secrets:
   mercury-key:
     file: id_rsa
+  mercury-key-pub:
+    file: ./backend/mercury-key.pub
   openrc:
     file: ./backend/hgi-openrc.sh
+  tenants_secret: 
+    file: ./backend/tenants_conf.yml
 networks:
   app:
     ipam:
