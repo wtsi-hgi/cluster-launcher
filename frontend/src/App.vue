@@ -127,6 +127,9 @@
   h1 {
     margin:0;
   }
+  a {
+    margin: 0px 5px;
+  }
   .hyperlink {
     margin:0;
     font-family: Avenir, Helvetica, Arial, sans-serif;

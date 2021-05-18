@@ -2,7 +2,9 @@
   <div>  
     <div class="header">
       <div class="header-text"> 
-        <p>Date/Time: </p>
+        <p>
+          <a href="https://metrics.internal.sanger.ac.uk/dashboard/db/fce-available-capacity-theta?refresh=5m&orgId=1">Available Theta Resources</a>
+        </p>
       </div>
     </div>
  

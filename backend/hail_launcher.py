@@ -15,7 +15,7 @@ import network
 import database
 from constants import DATABASE_NAME
 
-DEBUG = True
+DEBUG = False
 
 async def startup(request):
 
@@ -92,7 +92,6 @@ def cluster_creator(request, attributes, username):
     else:
       #Creates the user's network
       create_network(conn, username, attributes['tenant'])
-      tenant_id = database.fetch_id(attributes['tenant'])
       #Run the cluster creation bash script
       if "volume_name" in attributes:
         #Volume Size is set to zero if volume exists for the user in the tenant
@@ -161,7 +160,6 @@ def cluster_deletion(request, attributes, username):
 
   if attributes["status"] == True:
     if path.exists('/backend/clusters/'+username):
-      tenant_id = database.fetch_id(tenant_name)
       #Job Tuple for destroying clusters. Useful for checking status of jobs and their state
       process = subprocess.run(['bash', 'cluster-deletion.sh', username], env= osdataproc_creds, capture_output=True, text=True)
       if DEBUG:
@@ -318,7 +316,7 @@ def tenant_finder(user):
   cursor.execute('''SELECT tenant FROM clusters WHERE username = ?''',
                     (user,))
   tenant = cursor.fetchall()
-
+  print(tenant)
   return tenant[0][0]
 
 def remove_cluster(user):

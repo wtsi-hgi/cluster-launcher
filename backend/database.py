@@ -54,12 +54,12 @@ parser_search_tenant.add_argument('tenant_name', nargs=1, help="Name of Tenant")
 #Add users to the Tenant Table
 parser_associate_user = subparsers.add_parser('link', help="Add a User to the Tenant's Database")
 parser_associate_user.add_argument('user', nargs=1, help="Username of the user to add")
-parser_associate_user.add_argument('tenant_id', nargs=1, help="ID of the tenant to add the user to")
+parser_associate_user.add_argument('tenant_name', nargs=1, help="Name of the tenant to add the user to")
 
 #Remove users from the tenants database
 parser_deassociate_user = subparsers.add_parser('delink', help="Remove a User from the Tenant's Database.")
 parser_deassociate_user.add_argument('user', help="Username of the user to remove")
-parser_deassociate_user.add_argument('tenant_id', help="ID of the tenant to remove the user from")
+parser_deassociate_user.add_argument('tenant_name', help="Name of the tenant to remove the user from")
 
 parser_search = subparsers.add_parser('search', help="Search to find a user-tenant mapping")
 parser_search.add_argument('user', help="Username of the user to remove")
@@ -91,15 +91,15 @@ def initialise_database():
   ''')
 
   cursor.execute('''CREATE TABLE IF NOT EXISTS tenants(
-    tenants_id TEXT PRIMARY KEY NOT NULL,
-    tenants_name TEXT NOT NULL,
+    tenants_name TEXT PRIMARY KEY NOT NULL,
+    tenants_id TEXT NOT NULL,
     lustre_description TEXT NOT NULL)
   ''')
 
   cursor.execute('''CREATE TABLE IF NOT EXISTS user_tenant_mapping(
     username TEXT NOT NULL REFERENCES users(username),
-    tenant_id TEXT NOT NULL REFERENCES tenants(tenants_id),
-    PRIMARY KEY (username, tenant_id))
+    tenant_name TEXT NOT NULL REFERENCES tenants(tenants_name),
+    PRIMARY KEY (username, tenant_name))
   ''')
 
   cursor.execute('''CREATE TABLE IF NOT EXISTS volumes(
@@ -172,7 +172,7 @@ def populate_tenants():
     id = data['tenants'].get(tenant)
     lustre_desc = ""
     try:
-      cursor.execute("INSERT INTO tenants (tenants_id, tenants_name, lustre_description) VALUES (?, ?, ?)",(id, tenant, lustre_desc))
+      cursor.execute("INSERT INTO tenants (tenants_name, tenants_id, lustre_description) VALUES (?, ?, ?)",(tenant, id, lustre_desc))
     except sqlite3.IntegrityError:
       pass
 
@@ -197,7 +197,10 @@ def link_tables(user, tenant):
 
   cursor.execute('pragma foreign_keys=ON')
 
-  cursor.execute("INSERT INTO user_tenant_mapping (username, tenant_id) VALUES (?, ?)",(user, tenant))
+  tenant = tenant.lower()
+  print(user)
+  print(tenant)
+  cursor.execute("INSERT INTO user_tenant_mapping (username, tenant_name) VALUES (?, ?)",(user, tenant))
 
   db.commit()
   db.close()
@@ -206,8 +209,9 @@ def delink_tables(user, tenant):
   initialise_database()
   db = sqlite3.connect(DATABASE_NAME)
   cursor = db.cursor()
+  tenant = tenant.lower()
 
-  cursor.execute("DELETE from user_tenant_mapping where username = ? AND tenant_id = ?;", (user, tenant))
+  cursor.execute("DELETE from user_tenant_mapping where username = ? AND tenant_name = ?;", (user, tenant))
 
   db.commit()
   db.close()
@@ -226,7 +230,7 @@ def display_tenants():
   table.align["Tenant Name"] = "l"
 
   for tenant in results:
-    row = [str(tenant[1]), str(tenant[0]), str(tenant[2])]
+    row = [str(tenant[0]), str(tenant[1]), str(tenant[2])]
     table.add_row(row)
 
   print(table)
@@ -261,7 +265,7 @@ def display_mapping():
   results = cursor.fetchall()
 
   table = PrettyTable()
-  table.field_names = ["Username", "Tenant ID"]
+  table.field_names = ["Username", "Tenant Name"]
 
   for mapping in results:
     row = [str(mapping[0]), str(mapping[1])]
@@ -333,11 +337,11 @@ def search_user(user, tenant_name):
   db = sqlite3.connect(DATABASE_NAME)
   cursor = db.cursor()
 
-  with open('tenants_conf.yml', 'r') as tenant_file:
-    data = yaml.load(tenant_file, Loader=yaml.Loader)
-  tenant_id = data['tenants'].get(tenant_name)
+#  with open('tenants_conf.yml', 'r') as tenant_file:
+#    data = yaml.load(tenant_file, Loader=yaml.Loader)
+#  tenant_id = data['tenants'].get(tenant_name)
 
-  cursor.execute("SELECT * from user_tenant_mapping WHERE username = ? AND tenant_id = ?",(user,tenant_id))
+  cursor.execute("SELECT * from user_tenant_mapping WHERE username = ? AND tenant_name = ?",(user,tenant_name))
   result = cursor.fetchall()
   print(result)
   db.close()
@@ -384,23 +388,30 @@ def checkMappings(request):
     #For testing purposes
     username = "an12"
 
-  cursor.execute("SELECT tenant_id from user_tenant_mapping WHERE username = ?", [username])
-  result = cursor.fetchall()
+  cursor.execute("SELECT tenant_name from user_tenant_mapping WHERE username = ?", [username])
+  list_of_tenant_names = cursor.fetchall()
 
   array = {}
-  for entry in result:
-    cursor.execute("SELECT tenants_name from tenants WHERE tenants_id = ?", [entry[0]])
-    tenant_name = cursor.fetchall()[0][0]
+  for tenant_name in list_of_tenant_names:
+    volume_name = checkVolumes(username, tenant_name[0])
 
-    volume_name = checkVolumes(username, tenant_name)
-
-    array[tenant_name] = volume_name
+    array[tenant_name[0]] = volume_name
 
   print(array)
   return web.json_response(array)
 
 
+'''
+def dropTable():
+  initialise_database()
+  db = sqlite3.connect(DATABASE_NAME)
+  cursor = db.cursor()
 
+  cursor.execute("DROP TABLE user_tenant_mapping")
+
+  db.commit()
+  db.close()
+'''
 
 if __name__ == '__main__':
   args = parser.parse_args()
@@ -430,12 +441,14 @@ if __name__ == '__main__':
 
   #Add links in the User-Tenant Mapping Table
   if args.subparser == "link":
-    link_tables(args.user[0], args.tenant_id[0])
-
+    print(args.user[0])
+    print(args.tenant_name[0])
+    link_tables(args.user[0], args.tenant_name[0])
   #Delink in the User-Tenant Mapping Table
   if args.subparser == "delink":
-    delink_tables(args.user, args.tenant_id)
-
+    print(args.user)
+    print(args.tenant_name)
+    delink_tables(args.user, args.tenant_name)
   #List the tenants currently stored
   if args.subparser == "list":
     if args.options == "tenant":
