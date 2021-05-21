@@ -44,13 +44,14 @@ async def startup(request):
   pool = request.app["pool"]
 
   tenant_verification = database.search_user(username, attributes['tenant'])
-  print(tenant_verification)
+
   if tenant_verification == False:
     return web.Response(text="Unverified User")
   else:
     #Creates a thread with cluster creation code to prevent blocking the handler
     jobs[username] = ( pool.submit(cluster_creator, request, attributes, username), "UP" )
-    jobs[username][0].result()
+    if DEBUG:
+      jobs[username][0].result()
 
     return web.Response(text="Verified User")
 
@@ -96,7 +97,7 @@ def cluster_creator(request, attributes, username):
       if "volume_name" in attributes:
         #Volume Size is set to zero if volume exists for the user in the tenant
         volume_size = '0'
-        print("You already have a volume in this tenant, using: " + attributes['volume_name'])
+        print("Username: " + username + " is creating a cluster in " + attributes['tenant'] +", using volume: " + attributes['volume_name'])
         process = subprocess.run(['bash', 'cluster-creation.sh', username, attributes["password"],
                                  attributes["workers"], attributes["flavor"], attributes["volume_name"],
                                  volume_size], env = osdataproc_creds, capture_output=True, text=True)
@@ -106,6 +107,7 @@ def cluster_creator(request, attributes, username):
         volume_name = username+'-cluster-volume'
         database.add_volume(username, attributes['tenant'], volume_name)
         print("Creating Volume called: " + volume_name + " of size: " + attributes["volSize"])
+        print("Username: " + username + " is creating a cluster in " + attributes['tenant'] +", using volume: " + volume_name)
         process = subprocess.run(['bash', 'cluster-creation.sh', username, attributes["password"],
                                  attributes["workers"], attributes["flavor"], volume_name,
                                  attributes["volSize"]],
@@ -165,8 +167,6 @@ def cluster_deletion(request, attributes, username):
       if DEBUG:
         print(process)
       destroy_network(conn, username, tenant_name)
-      print("Cluster Deletion in Progress")
-
       remove_cluster(username)
 
     else:
@@ -242,7 +242,7 @@ def create_network(conn, username, tenant_name):
   network_list = [network.name for network in conn.network.networks()]
 
   if network_name in network_list:
-    print("Network Exists")
+    print(username + "'s network failed to destroy last session. Using: " + network_name + "again!")
   else:
     network.create(username, tenant_name)
 
@@ -256,7 +256,7 @@ def destroy_network(conn, username, tenant_name):
   if network_name in network_list:
     network.destroy(username, tenant_name)
   else:
-    print("Network doesn't exist")
+    print("Error: Failed to destroy network: " + network_name + "as the network does not exist.")
 
 
 #Obtain the OpenStack credentials from the environment
@@ -293,6 +293,24 @@ def env_credentials(tenant_name):
 
   return creds
 
+
+def get_flavors(request):
+  credentials = get_credentials()
+  conn = openstack.connect(**credentials)
+  flavors=conn.list_flavors()
+  flavor_list = []
+  accepted_prefix = ['m2', 's2']
+  accepted_sizing = ['medium', 'large', 'xlarge', '2xlarge', '3xlarge', '4xlarge']
+  for flavor in flavors:
+    flavor_prefix = flavor.name[:2]
+    flavor_suffix = flavor.name[3:]
+    if flavor_prefix in accepted_prefix:
+      if flavor_suffix in accepted_sizing:
+        flavor_list.append(flavor.name)
+
+  return web.json_response(flavor_list)
+
+
 def initialise_cluster_table():
   #Initialise the database by creating the SQL tables if not present already
   db = sqlite3.connect(DATABASE_NAME)
@@ -316,7 +334,6 @@ def tenant_finder(user):
   cursor.execute('''SELECT tenant FROM clusters WHERE username = ?''',
                     (user,))
   tenant = cursor.fetchall()
-  print(tenant)
   return tenant[0][0]
 
 def remove_cluster(user):

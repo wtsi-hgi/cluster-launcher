@@ -99,8 +99,6 @@ def destroy(username, tenant_name):
   initialise_database(username, tenant_name)
 
   neutron = _neutron(tenant_name)
-  prefix = username+"-cluter"
-  network_name = prefix+"-network"
 
   try:
   # Get the externally routed network
@@ -121,7 +119,6 @@ def destroy(username, tenant_name):
     neutron.delete_network(network_id)
 
     cursor.execute('''DELETE FROM networking WHERE user_name= ? AND tenant_name = ?''',(username, tenant_name))
-    print("Network deconstructed")
 
   except sqlite3.OperationalError:
     # this triggers when table "networking" already exists in the DB

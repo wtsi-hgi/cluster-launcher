@@ -198,8 +198,7 @@ def link_tables(user, tenant):
   cursor.execute('pragma foreign_keys=ON')
 
   tenant = tenant.lower()
-  print(user)
-  print(tenant)
+
   cursor.execute("INSERT INTO user_tenant_mapping (username, tenant_name) VALUES (?, ?)",(user, tenant))
 
   db.commit()
@@ -275,6 +274,7 @@ def display_mapping():
 
   db.close()
 
+
 def display_clusters():
   initialise_database()
   db = sqlite3.connect(DATABASE_NAME)
@@ -332,18 +332,27 @@ def display_volumes():
 
   db.close()
 
+
+def request_mappings(request):
+  initialise_database()
+  db = sqlite3.connect(DATABASE_NAME)
+  cursor = db.cursor()
+
+  cursor.execute("SELECT * from user_tenant_mapping ORDER BY username")
+  results = cursor.fetchall()
+
+  db.close()
+
+  return web.json_response(results)
+
 def search_user(user, tenant_name):
   initialise_database()
   db = sqlite3.connect(DATABASE_NAME)
   cursor = db.cursor()
 
-#  with open('tenants_conf.yml', 'r') as tenant_file:
-#    data = yaml.load(tenant_file, Loader=yaml.Loader)
-#  tenant_id = data['tenants'].get(tenant_name)
-
   cursor.execute("SELECT * from user_tenant_mapping WHERE username = ? AND tenant_name = ?",(user,tenant_name))
   result = cursor.fetchall()
-  print(result)
+
   db.close()
 
   if result == []:
@@ -397,21 +406,8 @@ def checkMappings(request):
 
     array[tenant_name[0]] = volume_name
 
-  print(array)
   return web.json_response(array)
 
-
-'''
-def dropTable():
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
-
-  cursor.execute("DROP TABLE user_tenant_mapping")
-
-  db.commit()
-  db.close()
-'''
 
 if __name__ == '__main__':
   args = parser.parse_args()
@@ -441,8 +437,6 @@ if __name__ == '__main__':
 
   #Add links in the User-Tenant Mapping Table
   if args.subparser == "link":
-    print(args.user[0])
-    print(args.tenant_name[0])
     link_tables(args.user[0], args.tenant_name[0])
   #Delink in the User-Tenant Mapping Table
   if args.subparser == "delink":
