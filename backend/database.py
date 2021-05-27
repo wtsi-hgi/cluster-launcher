@@ -81,7 +81,7 @@ networks_list_mappings = list_subparsers.add_parser('networks')
 #Output volumes table information
 volumes_list_mappings = list_subparsers.add_parser('volumes')
 
-def initialise_database():
+def db, cursor = initialise_database():
   #Initialise the database by creating the SQL tables if not present already
   db = sqlite3.connect(DATABASE_NAME)
   cursor = db.cursor()
@@ -111,25 +111,24 @@ def initialise_database():
   ''')
 
   db.commit()
-  db.close()
+  
+  return db, cursor
 
 
 def add_user(user):
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
+
   try:
     cursor.execute("INSERT INTO users (username) VALUES (?)",(user))
+    db.commit()
   except sqlite3.IntegrityError:
     print("Username is already registered in the Database")
-  db.commit()
+
   db.close()
 
 
 def remove_user(user):
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   cursor.execute("DELETE from users where username = ?", (user))
 
@@ -138,22 +137,19 @@ def remove_user(user):
 
 
 def add_volume(user, tenant_name, volume_name):
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   try:
     cursor.execute("INSERT INTO volumes (username, tenant_name, volume_name) VALUES (?,?,?)",(user,tenant_name,volume_name))
+    db.commit()
   except sqlite3.IntegrityError:
     print("Username already has a volume registered to that tenant")
-  db.commit()
+
   db.close()
 
 
 def remove_volume(user, tenant_name):
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   cursor.execute("DELETE from volumes where username = ? AND tenant_name = ?", (user, tenant_name))
 
@@ -161,9 +157,7 @@ def remove_volume(user, tenant_name):
   db.close()
 
 def populate_tenants():
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   with open('tenants_conf.yml', 'r') as tenant_file:
     data = yaml.load(tenant_file, Loader=yaml.Loader)
@@ -173,17 +167,15 @@ def populate_tenants():
     lustre_desc = ""
     try:
       cursor.execute("INSERT INTO tenants (tenants_name, tenants_id, lustre_description) VALUES (?, ?, ?)",(tenant, id, lustre_desc))
+    db.commit()
     except sqlite3.IntegrityError:
       pass
 
-  db.commit()
   db.close()
 
 
 def depopulate_tenants():
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   cursor.execute("DELETE FROM tenants")
   print(str(cursor.rowcount) + " rows have been deleted from the tenant table")
@@ -191,9 +183,7 @@ def depopulate_tenants():
   db.close()
 
 def link_tables(user, tenant):
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   cursor.execute('pragma foreign_keys=ON')
 
@@ -205,9 +195,8 @@ def link_tables(user, tenant):
   db.close()
 
 def delink_tables(user, tenant):
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
+
   tenant = tenant.lower()
 
   cursor.execute("DELETE from user_tenant_mapping where username = ? AND tenant_name = ?;", (user, tenant))
@@ -217,9 +206,7 @@ def delink_tables(user, tenant):
 
 
 def display_tenants():
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   cursor.execute("SELECT * from tenants ORDER BY tenants_name")
   results = cursor.fetchall()
@@ -237,9 +224,7 @@ def display_tenants():
   db.close()
 
 def display_users():
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   cursor.execute("SELECT * from users ORDER BY username")
   results = cursor.fetchall()
@@ -256,9 +241,7 @@ def display_users():
   db.close()
 
 def display_mapping():
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   cursor.execute("SELECT * from user_tenant_mapping ORDER BY username")
   results = cursor.fetchall()
@@ -276,9 +259,7 @@ def display_mapping():
 
 
 def display_clusters():
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   cursor.execute("SELECT * from clusters ORDER BY username")
   results = cursor.fetchall()
@@ -295,9 +276,7 @@ def display_clusters():
   db.close()
 
 def display_networks():
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   cursor.execute("SELECT * from networking ORDER BY user_name")
   results = cursor.fetchall()
@@ -314,9 +293,7 @@ def display_networks():
   db.close()
 
 def display_volumes():
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   cursor.execute("SELECT * from volumes ORDER BY username")
   results = cursor.fetchall()
@@ -334,9 +311,7 @@ def display_volumes():
 
 
 def request_mappings(request):
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   cursor.execute("SELECT * from user_tenant_mapping ORDER BY username")
   results = cursor.fetchall()
@@ -346,9 +321,7 @@ def request_mappings(request):
   return web.json_response(results)
 
 def search_user(user, tenant_name):
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   cursor.execute("SELECT * from user_tenant_mapping WHERE username = ? AND tenant_name = ?",(user,tenant_name))
   result = cursor.fetchall()
@@ -361,9 +334,7 @@ def search_user(user, tenant_name):
     return True
 
 def fetch_id(tenant_name):
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   cursor.execute("SELECT tenants_id from tenants WHERE tenants_name = ?", [tenant_name])
   tenant_id = cursor.fetchall()
@@ -372,9 +343,7 @@ def fetch_id(tenant_name):
 
 
 def checkVolumes(username, tenant_name):
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
 
   cursor.execute("SELECT volume_name from volumes WHERE username = ? AND tenant_name = ?", [username, tenant_name])
   try:
@@ -387,9 +356,8 @@ def checkVolumes(username, tenant_name):
 
 def checkMappings(request):
 
-  initialise_database()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
+  db, cursor = initialise_database()
+
 
   if 'X-Forwarded-User' in request.headers:
     username = request.headers['X-Forwarded-User']
@@ -440,8 +408,6 @@ if __name__ == '__main__':
     link_tables(args.user[0], args.tenant_name[0])
   #Delink in the User-Tenant Mapping Table
   if args.subparser == "delink":
-    print(args.user)
-    print(args.tenant_name)
     delink_tables(args.user, args.tenant_name)
   #List the tenants currently stored
   if args.subparser == "list":
