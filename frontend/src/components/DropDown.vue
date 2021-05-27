@@ -1,7 +1,7 @@
 <template>
   <div>
     <select required id="dropDown" @change="onChange()" v-model="output">
-      <option>Select Tenant</option>
+      <option value="" disabled selected hidden> {{ this.display }} </option>
       <option v-for="choice in choices" :key=choice.id>{{ choice }}</option>
     </select>
   </div>
@@ -12,8 +12,9 @@
   export default {
     props: {
       choices: {type:Array},
-      result: {type:String},
-      volumes: {type:Object}
+      display: {type:String},
+      volumes: {type:Object},
+      flavourList: {type:Object}
     },
     data: function() {
       return {
@@ -22,12 +23,16 @@
     },
     methods: {
       onChange: function() {
-        if (this.volumes[this.output] != null) {
-          this.$emit("enable-box", this.output)
+        if (this.volumes == null) {
+         this.$emit("flavour", this.output)
         }
         else {
-          console.log(this.volumes[this.output])
-          this.$emit("disable-box", this.output)
+          if (this.volumes[this.output] != null) {
+            this.$emit("enable-volume-box", this.output)
+          }
+          else {
+            this.$emit("disable-volume-box", this.output)
+          }
         }
       }
     }

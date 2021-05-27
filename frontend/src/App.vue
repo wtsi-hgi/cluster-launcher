@@ -63,10 +63,15 @@
         this.pending= !this.pending;
       },
       clusterCheck: function() {
+        
         const requestOptions = { status: this.status }
+
+        axios.get(process.env.VUE_APP_BACKEND_API_URL + '/mappings')
+            .then((response) => {console.log(response);});
+        
         axios.get(process.env.VUE_APP_BACKEND_API_URL + '/hail/frontend/status', requestOptions)
             .then((response) => {
-
+              console.log(response)
               if (response.data.status == 'down') {
                 this.pending=false
                 this.status=false

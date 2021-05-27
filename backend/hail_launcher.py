@@ -294,11 +294,12 @@ def env_credentials(tenant_name):
   return creds
 
 
-def get_flavors(request):
-  credentials = get_credentials()
+async def get_flavors(request):
+  tenant_name = await request.json()
+  credentials = get_credentials(tenant_name['tenant'])
   conn = openstack.connect(**credentials)
   flavors=conn.list_flavors()
-  flavor_list = []
+  flavor_list = {}
   accepted_prefix = ['m2', 's2']
   accepted_sizing = ['medium', 'large', 'xlarge', '2xlarge', '3xlarge', '4xlarge']
   for flavor in flavors:
@@ -306,8 +307,7 @@ def get_flavors(request):
     flavor_suffix = flavor.name[3:]
     if flavor_prefix in accepted_prefix:
       if flavor_suffix in accepted_sizing:
-        flavor_list.append(flavor.name)
-
+        flavor_list[flavor.name] = flavor.name
   return web.json_response(flavor_list)
 
 
