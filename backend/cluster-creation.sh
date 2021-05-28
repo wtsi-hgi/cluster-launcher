@@ -18,3 +18,4 @@ then
 else
   python osdataproc.py create "${username}" --public-key /backend/mercury-key.pub --nfs-volume $5 --volume-size $6 --image-name bionic-server --flavour "${flavor}" --num-workers "${workers}" --network-name "${network_name}" <<< "${password}"
 fi
+

@@ -109,8 +109,7 @@ def cluster_creator(request, attributes, username):
         print("Creating Volume called: " + volume_name + " of size: " + attributes["volSize"])
         print("Username: " + username + " is creating a cluster in " + attributes['tenant'] +", using volume: " + volume_name)
         process = subprocess.run(['bash', 'cluster-creation.sh', username, attributes["password"],
-                                 attributes["workers"], attributes["flavor"], volume_name,
-                                 attributes["volSize"]],
+                                 attributes["workers"], attributes["flavor"], volume_name, attributes["volSize"]],
                                  env = osdataproc_creds, capture_output=True, text=True)
       if DEBUG:
         print(process)
@@ -123,6 +122,15 @@ def cluster_creator(request, attributes, username):
             data = json.load(json_file)
             cluster_ip = data["spark_master_public_ip"]["value"]
           add_cluster(username, attributes['tenant'], cluster_ip, attributes['workers'])
+          user_key_path = "/backend/clusters/"+username+"/pubkey.pub"
+          cluster_location = "ubuntu@"+cluster_ip
+          print(user_key_path)
+          print(attributes["public_key"])
+          with open(user_key_path, 'w') as key_file:
+            key_file.write(attributes["public_key"])
+
+
+          subprocess.run(['ssh-copy-id', '-f', '-i', user_key_path, cluster_location], capture_output=True, text=True)
       except:
         print("Error has occured when registering this cluster")
 
@@ -146,7 +154,8 @@ async def tear_down(request):
 
   #Start a Thread with cluster deletion code to prevent blocking the handler
   jobs[username] = ( pool.submit(cluster_deletion, request, attributes, username), "DOWN" )
-  jobs[username][0].result()
+  if DEBUG:
+    jobs[username][0].result()
 
   return web.Response(text="Cluster Deletion in Progress")
 
@@ -185,7 +194,6 @@ async def job_status(request):
   else:
     #For testing purposes
     username = "an12"
-
 
 
   path_to_cluster_ip = '/backend/clusters/' + username + '/osdataproc/terraform/terraform.tfstate.d/' + username + '/outputs.json'
