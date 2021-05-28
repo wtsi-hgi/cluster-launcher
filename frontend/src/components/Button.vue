@@ -31,7 +31,7 @@
       onClick: function() {
         if (this.status == false){
           if (this.boxDisabled == true) {
-            if (this.pubkey == '' && this.workers != '' && this.password != '' && this.flavor != '' && this.tenant != '') {
+            if (this.pubkey != '' && this.workers != '' && this.password != '' && this.flavor != '' && this.tenant != '') {
 
               const requestOptions = { public_key: this.pubkey, workers: this.workers, 
                   password: this.password, flavor: this.flavor, tenant: this.tenant,
@@ -44,7 +44,7 @@
             }
           }
           else if (this.boxDisabled == false) {
-            if (this.pubkey == '' && this.volSize != '' && this.workers != '' && this.password != '' && this.flavor != '' && this.tenant != '') {
+            if (this.pubkey != '' && this.volSize != '' && this.workers != '' && this.password != '' && this.flavor != '' && this.tenant != '') {
 
               const requestOptions = { public_key: this.pubkey, workers: this.workers, 
                   password: this.password, flavor: this.flavor, tenant: this.tenant, 
