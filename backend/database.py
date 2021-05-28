@@ -81,7 +81,7 @@ networks_list_mappings = list_subparsers.add_parser('networks')
 #Output volumes table information
 volumes_list_mappings = list_subparsers.add_parser('volumes')
 
-def db, cursor = initialise_database():
+def initialise_database():
   #Initialise the database by creating the SQL tables if not present already
   db = sqlite3.connect(DATABASE_NAME)
   cursor = db.cursor()
@@ -167,7 +167,7 @@ def populate_tenants():
     lustre_desc = ""
     try:
       cursor.execute("INSERT INTO tenants (tenants_name, tenants_id, lustre_description) VALUES (?, ?, ?)",(tenant, id, lustre_desc))
-    db.commit()
+      db.commit()
     except sqlite3.IntegrityError:
       pass
 
