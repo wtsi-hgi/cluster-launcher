@@ -8,7 +8,7 @@
       </div>
     </div>
  
-    <input type="publicKey" v-model="pkey" placeholder="Public Key" disabled>
+    <input type="publicKey" v-model="pkey" placeholder="Public Key">
     <input type="numOfWorkers" v-model="workers" placeholder="Number of Workers">
     <input type="pass" v-model="password" placeholder="Password">
     <DropDown :display=this.tenantPlaceholder :volumes=this.volumes :choices=this.choices @enable-volume-box="enableBox" @disable-volume-box="disableBox"></DropDown>
@@ -63,7 +63,6 @@
       },
       setFlavour: function(choice) {
         this.flavour = choice
-        console.log(this.flavour)
       },
       checkMappings: function() {
         const requestOptions = { }
@@ -71,7 +70,6 @@
           .then((response) => {
             this.volumes = response.data
             this.choices = Object.keys(response.data)
-            console.log("Reaching")
           })
       },
       getFlavors: function(chosen_tenant) {
@@ -79,7 +77,6 @@
         axios.post(process.env.VUE_APP_BACKEND_API_URL + '/hail/frontend/flavors', requestOptions)
           .then((response) => {
             this.flavourList = response.data
-            console.log(this.flavourList)
           })
       }
     },
