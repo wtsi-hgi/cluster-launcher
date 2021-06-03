@@ -124,8 +124,7 @@ def cluster_creator(request, attributes, username):
           add_cluster(username, attributes['tenant'], cluster_ip, attributes['workers'])
           user_key_path = "/backend/clusters/"+username+"/pubkey.pub"
           cluster_location = "ubuntu@"+cluster_ip
-          print(user_key_path)
-          print(attributes["public_key"])
+
           with open(user_key_path, 'w') as key_file:
             key_file.write(attributes["public_key"])
 
@@ -219,18 +218,24 @@ async def job_status(request):
   else:
     job = jobs[username][0]
     if job.done():
-      # Returns this response if the cluster is up
+      # Returns this response if the cluster is finished raising up
       if jobs[username][1] == "UP":
         #Reads the Master Public IP ready for sending to the frontend
-        with open(path_to_cluster_ip) as json_file:
-          data = json.load(json_file)
-          cluster_ip = data["spark_master_public_ip"]["value"]
-        return web.json_response({
-          "status": "up",
-          "cluster_ip": cluster_ip
-        })
+        try:
+          with open(path_to_cluster_ip) as json_file:
+            data = json.load(json_file)
+            cluster_ip = data["spark_master_public_ip"]["value"]
+          return web.json_response({
+            "status": "up",
+            "cluster_ip": cluster_ip
+          })
+        except Exception:
+          #This activates if there is a cluster in the persistence layer but no cluster loaded
+          return web.json_response({
+            "status": "error"
+          })
 
-      # Returns this response if the cluster is down
+      # Returns this response if the cluster is finished coming down
       elif jobs[username][1] == "DOWN":
         return web.json_response({
           "status": "down"
