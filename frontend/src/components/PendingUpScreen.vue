@@ -4,7 +4,7 @@
   -->
   <div class="header">
     <div class="header-text">
-      <p>This Cluster is Pending Creation: Please refresh the page in 7-10 minutes from your initial launch of the cluster </p>
+      <p>This Cluster is Pending Creation: Please refresh the page in 10-30 minutes from your initial launch of the cluster </p>
     </div>
   </div>
 </template>
