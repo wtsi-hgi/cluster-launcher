@@ -61,6 +61,14 @@ parser_deassociate_user = subparsers.add_parser('delink', help="Remove a User fr
 parser_deassociate_user.add_argument('user', help="Username of the user to remove")
 parser_deassociate_user.add_argument('tenant_name', help="Name of the tenant to remove the user from")
 
+parser_cluster = subparsers.add_parser('cluster', help="Manage a Cluster in the database in the event of errors")
+cluster_subparsers = parser_cluster.add_subparsers(dest='options')
+
+parser_remove_cluster = cluster_subparsers.add_parser('remove', help="Remove a Cluster from the table")
+parser_remove_cluster.add_argument('user', help="Username of the user to remove")
+parser_remove_cluster.add_argument('tenant_name', help="Name of the tenant")
+
+
 parser_search = subparsers.add_parser('search', help="Search to find a user-tenant mapping")
 parser_search.add_argument('user', help="Username of the user to remove")
 parser_search.add_argument('tenant_name', help="ID of the tenant to remove the user from")
@@ -111,7 +119,7 @@ def initialise_database():
   ''')
 
   db.commit()
-  
+
   return db, cursor
 
 
@@ -152,6 +160,14 @@ def remove_volume(user, tenant_name):
   db, cursor = initialise_database()
 
   cursor.execute("DELETE from volumes where username = ? AND tenant_name = ?", (user, tenant_name))
+
+  db.commit()
+  db.close()
+
+def remove_cluster(user, tenant_name):
+  db, cursor = initialise_database()
+
+  cursor.execute("DELETE from clusters where username = ? AND tenant_name = ?", (user, tenant_name))
 
   db.commit()
   db.close()
@@ -393,6 +409,10 @@ if __name__ == '__main__':
       add_volume(args.user[0], args.tenant_name[0], args.volume_name[0])
     if args.options == "remove":
       remove_volume(args.user[0], args.tenant_name[0])
+
+  if args.subparser == "cluster":
+    if args.options == "remove":
+      remove_cluster(args.user[0], args.tenant_name[0])
 
   #Populate the Tenant's Table
   if args.subparser == "tenant":
