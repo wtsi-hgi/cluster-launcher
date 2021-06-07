@@ -68,6 +68,14 @@ parser_remove_cluster = cluster_subparsers.add_parser('remove', help="Remove a C
 parser_remove_cluster.add_argument('user', help="Username of the user to remove")
 parser_remove_cluster.add_argument('tenant_name', help="Name of the tenant")
 
+parser_network = subparsers.add_parser('network', help="Manage a Network in the database in the event of errors")
+network_subparsers = parser_network.add_subparsers(dest='options')
+
+parser_remove_network = network_subparsers.add_parser('remove', help="Remove a Network from the table")
+parser_remove_network.add_argument('user', help="Username of the user to remove")
+parser_remove_network.add_argument('tenant_name', help="Name of the tenant")
+
+
 
 parser_search = subparsers.add_parser('search', help="Search to find a user-tenant mapping")
 parser_search.add_argument('user', help="Username of the user to remove")
@@ -168,6 +176,14 @@ def remove_cluster(user, tenant_name):
   db, cursor = initialise_database()
 
   cursor.execute("DELETE from clusters where username = ? AND tenant_name = ?", (user, tenant_name))
+
+  db.commit()
+  db.close()
+
+def remove_network(user, tenant_name):
+  db, cursor = initialise_database()
+
+  cursor.execute("DELETE from networking where user_name = ? AND tenant_name = ?", (user, tenant_name))
 
   db.commit()
   db.close()
@@ -413,6 +429,10 @@ if __name__ == '__main__':
   if args.subparser == "cluster":
     if args.options == "remove":
       remove_cluster(args.user[0], args.tenant_name[0])
+
+  if args.subparser == "network":
+    if args.options == "remove":
+      remove_network(args.user[0], args.tenant_name[0])
 
   #Populate the Tenant's Table
   if args.subparser == "tenant":
