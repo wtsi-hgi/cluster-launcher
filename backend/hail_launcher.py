@@ -15,15 +15,18 @@ import network
 import database
 from constants import DATABASE_NAME
 
+#Enabling this before startup will display all prints to the terminal
+#Having this on constantly will prevent the handler from completing until
+#osdataproc has run - not changing screens and occasionally resulting in a timeout 
 DEBUG = False
 
 async def startup(request):
-
+  #X-Forwarded-User is passed through the Swarm's Nginx
   if 'X-Forwarded-User' in request.headers:
     username = request.headers['X-Forwarded-User']
   else:
-    #For testing purposes
-    username = "an12"
+    #For testing purposes outside of the Production Swarm
+    username = "non-swarm-test"
 
   #Request returned from the frontend is in the form:
   #The Request will either specify volSize or the volume_name, not both
@@ -34,8 +37,8 @@ async def startup(request):
   #   flavor: String,
   #   tenant: String,
   #   status: Boolean,
-  #   volSize: Integer - Not Required,
-  #   volume_name: String - Not Required
+  #   volSize: Integer - Mutually Exclusive,
+  #   volume_name: String - Mutually Exclusive
   # }
   attributes = await request.json()
 
@@ -43,6 +46,8 @@ async def startup(request):
   jobs = request.app["jobs"]
   pool = request.app["pool"]
 
+  #Determine if the user has been granted access to their entered tenant
+  #This is a security measure in case the frontend dropdown breaks/has errors
   tenant_verification = database.search_user(username, attributes['tenant'])
 
   if tenant_verification == False:
@@ -68,13 +73,14 @@ def cluster_creator(request, attributes, username):
   #   volume_name: String - Not Required
   # }
 
-#  with open('public_key.pub', 'w') as key_file:
-#    key_file.write(attributes["public_key"])
 
+  #Store OpenRC Credentials for OpenStack connection
   credentials = get_credentials(attributes['tenant'])
   conn = openstack.connect(**credentials)
+  #Store environment variables for use in new environment
   osdataproc_creds = env_credentials(attributes['tenant'])
 
+  #Security Measure to ensure flavour exists in the requested tenant
   flavors=conn.list_flavors()
   flavor_names = [str(flavor.name) for flavor in flavors if flavor.id is not None]
 
@@ -92,7 +98,7 @@ def cluster_creator(request, attributes, username):
       print("A cluster is already registered - an error has occured!")
     else:
       #Creates the user's network
-      create_network(conn, username, attributes['tenant'])
+      network.create(conn, username, attributes['tenant'])
       #Run the cluster creation bash script
       if "volume_name" in attributes:
         #Volume Size is set to zero if volume exists for the user in the tenant
@@ -121,7 +127,7 @@ def cluster_creator(request, attributes, username):
           with open(path_to_cluster_ip) as json_file:
             data = json.load(json_file)
             cluster_ip = data["spark_master_public_ip"]["value"]
-          add_cluster(username, attributes['tenant'], cluster_ip, attributes['workers'])
+          database.add_cluster(username, attributes['tenant'], cluster_ip, attributes['workers'])
           user_key_path = "/backend/clusters/"+username+"/pubkey.pub"
           cluster_location = "ubuntu@"+cluster_ip
 
@@ -145,7 +151,7 @@ async def tear_down(request):
     username = request.headers['X-Forwarded-User']
   else:
     #For testing purposes
-    username = "an12"
+    username = "non-swarm-test"
 
   #Initialise the Pool and Jobs dictionary as variables
   jobs = request.app["jobs"]
@@ -160,22 +166,23 @@ async def tear_down(request):
 
 
 def cluster_deletion(request, attributes, username):
-  tenant_name = tenant_finder(username)
+  tenant_name = database.tenant_finder(username)
 
   #Take OpenStack credentials from the OS_* environment variables and create a connection object
   credentials = get_credentials(tenant_name)
   conn = openstack.connect(**credentials)
-
+  #Store the environment variables in a dictionary for use in subprocess
   osdataproc_creds = env_credentials(tenant_name)
 
+  #Ensures there is a cluster to delete
   if attributes["status"] == True:
     if path.exists('/backend/clusters/'+username):
       #Job Tuple for destroying clusters. Useful for checking status of jobs and their state
       process = subprocess.run(['bash', 'cluster-deletion.sh', username], env= osdataproc_creds, capture_output=True, text=True)
       if DEBUG:
         print(process)
-      destroy_network(conn, username, tenant_name)
-      remove_cluster(username)
+      network.destroy(conn, username, tenant_name)
+      database.remove_cluster(username)
 
     else:
       #Improve Logging for Error Messages
@@ -187,13 +194,12 @@ def cluster_deletion(request, attributes, username):
 async def job_status(request):
   #Assign the Jobs Dictionary to the variable jobs
   jobs = request.app["jobs"]
-
+  #Assign Username from Production Swarm/Assign test user
   if 'X-Forwarded-User' in request.headers:
     username = request.headers['X-Forwarded-User']
   else:
     #For testing purposes
-    username = "an12"
-
+    username = "non-swarm-test"
 
   path_to_cluster_ip = '/backend/clusters/' + username + '/osdataproc/terraform/terraform.tfstate.d/' + username + '/outputs.json'
 
@@ -201,6 +207,7 @@ async def job_status(request):
   # This catches clusters if they're up in this eventuality
   if username not in jobs:
     if path.exists(path_to_cluster_ip):
+      #Obtain IP of Master Node
       with open(path_to_cluster_ip) as json_file:
         data = json.load(json_file)
         cluster_ip = data["spark_master_public_ip"]["value"]
@@ -216,6 +223,9 @@ async def job_status(request):
       })
 
   else:
+    #jobs[username][0] is the task in the job queue
+    #jobs[username][1] is a String detailing if the 
+    #job was to bring a cluster up or down
     job = jobs[username][0]
     if job.done():
       # Returns this response if the cluster is finished raising up
@@ -249,44 +259,39 @@ async def job_status(request):
         "pending": jobs[username][1]
       })
 
-
-def create_network(conn, username, tenant_name):
-  network_name = username+"-cluster-network"
-  network_list = [network.name for network in conn.network.networks()]
-
-  if network_name in network_list:
-    print(username + "'s network failed to destroy last session. Using: " + network_name + "again!")
-  else:
-    network.create(username, tenant_name)
-
-
-def destroy_network(conn, username, tenant_name):
-  prefix = username+"-cluster"
-  network_name = prefix + "-network"
-
-  network_list = [network.name for network in conn.network.networks()]
-
-  if network_name in network_list:
-    network.destroy(username, tenant_name)
-  else:
-    print("Error: Failed to destroy network: " + network_name + "as the network does not exist.")
-
+#Handler for Flavour Dropdown
+async def get_flavors(request):
+  tenant_name = await request.json()
+  credentials = get_credentials(tenant_name['tenant'])
+  conn = openstack.connect(**credentials)
+  flavors=conn.list_flavors()
+  flavor_list = {}
+  accepted_prefix = ['m2', 's2']
+  accepted_sizing = ['medium', 'large', 'xlarge', '2xlarge', '3xlarge', '4xlarge']
+  for flavor in flavors:
+    flavor_prefix = flavor.name[:2]
+    flavor_suffix = flavor.name[3:]
+    if flavor_prefix in accepted_prefix:
+      if flavor_suffix in accepted_sizing:
+        flavor_list[flavor.name] = flavor.name
+  return web.json_response(flavor_list)
 
 #Obtain the OpenStack credentials from the environment
 def get_credentials(tenant_name):
-  d = {}
+  creds = {}
   try:
     tenant_id = database.fetch_id(tenant_name)
-    d['version']  = "2"
-    d['username'] = os.environ['OS_USERNAME']
-    d['api_key'] = os.environ['OS_PASSWORD']
-    d['auth_url'] = os.environ['OS_AUTH_URL']
-    d['project_id'] = tenant_id
+    creds['version']  = "2"
+    creds['username'] = os.environ['OS_USERNAME']
+    creds['api_key'] = os.environ['OS_PASSWORD']
+    creds['auth_url'] = os.environ['OS_AUTH_URL']
+    creds['project_id'] = tenant_id
   except KeyError:
     raise Exception("Could not find all required fields in the environment")
 
-  return d
+  return creds
 
+#Store the environment variables in a dictionary
 def env_credentials(tenant_name):
   creds = {**os.environ}
   try:
@@ -305,73 +310,3 @@ def env_credentials(tenant_name):
     raise Exception("Could not find all required fields in the environment")
 
   return creds
-
-
-async def get_flavors(request):
-  tenant_name = await request.json()
-  credentials = get_credentials(tenant_name['tenant'])
-  conn = openstack.connect(**credentials)
-  flavors=conn.list_flavors()
-  flavor_list = {}
-  accepted_prefix = ['m2', 's2']
-  accepted_sizing = ['medium', 'large', 'xlarge', '2xlarge', '3xlarge', '4xlarge']
-  for flavor in flavors:
-    flavor_prefix = flavor.name[:2]
-    flavor_suffix = flavor.name[3:]
-    if flavor_prefix in accepted_prefix:
-      if flavor_suffix in accepted_sizing:
-        flavor_list[flavor.name] = flavor.name
-  return web.json_response(flavor_list)
-
-
-def initialise_cluster_table():
-  #Initialise the database by creating the SQL tables if not present already
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
-
-  cursor.execute('''CREATE TABLE IF NOT EXISTS clusters(
-                      username TEXT PRIMARY KEY NOT NULL,
-                      tenant TEXT NOT NULL,
-                      cluster_ip TEXT NOT NULL,
-                      num_workers TEXT NOT NULL)
-                ''')
-
-  db.commit()
-  db.close()
-
-def tenant_finder(user):
-  initialise_cluster_table()
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
-
-  cursor.execute('''SELECT tenant FROM clusters WHERE username = ?''',
-                    (user,))
-  tenant = cursor.fetchall()
-  return tenant[0][0]
-
-def remove_cluster(user):
-  initialise_cluster_table()
-
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
-
-  cursor.execute('''DELETE from clusters WHERE username = ?''', (user,))
-
-  db.commit()
-  db.close()
-
-
-def add_cluster(user, tenant_name, cluster_ip, num_workers):
-  initialise_cluster_table()
-
-  db = sqlite3.connect(DATABASE_NAME)
-  cursor = db.cursor()
-
-  try:
-    cursor.execute('''INSERT INTO clusters (username, tenant, cluster_ip, num_workers)
-                      VALUES (?, ?, ?, ?)''', (user, tenant_name, cluster_ip, num_workers))
-  except sqlite3.IntegrityError:
-    print("This user already has a cluster registered. An error has occured")
-
-  db.commit()
-  db.close()

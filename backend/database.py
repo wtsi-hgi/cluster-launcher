@@ -126,6 +126,23 @@ def initialise_database():
     PRIMARY KEY (username, tenant_name))
   ''')
 
+  cursor.execute('''CREATE TABLE IF NOT EXISTS clusters(
+    username TEXT PRIMARY KEY NOT NULL,
+    tenant TEXT NOT NULL,
+    cluster_ip TEXT NOT NULL,
+    num_workers TEXT NOT NULL)
+  ''')
+
+  cursor.execute('''
+    CREATE TABLE IF NOT EXISTS networking(
+      user_name TEXT NOT NULL,
+      network_id TEXT NOT NULL,
+      subnet_id TEXT NOT NULL,
+      router_id TEXT NOT NULL,
+      tenant_name TEXT NOT NULL,
+      PRIMARY KEY (user_name, tenant_name)
+    )
+  ''')
   db.commit()
 
   return db, cursor
@@ -172,13 +189,36 @@ def remove_volume(user, tenant_name):
   db.commit()
   db.close()
 
-def remove_cluster(user, tenant_name):
+def add_cluster(user, tenant_name, cluster_ip, num_workers):
   db, cursor = initialise_database()
 
-  cursor.execute("DELETE from clusters where username = ? AND tenant_name = ?", (user, tenant_name))
+  try:
+    cursor.execute('''INSERT INTO clusters (username, tenant, cluster_ip, num_workers)
+                      VALUES (?, ?, ?, ?)''', (user, tenant_name, cluster_ip, num_workers))
+  except sqlite3.IntegrityError:
+    print("This user already has a cluster registered. An error has occured")
 
   db.commit()
   db.close()
+
+def remove_cluster(user):
+  db, cursor = initialise_database()
+
+  cursor.execute("DELETE from clusters where username = ?", (user,))
+
+  db.commit()
+  db.close()
+
+def add_network(username, network_id, subnet_id, router_id, tenant_name):
+  db, cursor = initialise_database()
+  
+  cursor.execute('''INSERT INTO
+      networking(user_name, network_id, subnet_id, router_id, tenant_name)
+      VALUES(?, ?, ?, ?, ?)''',
+      (username, network_id, subnet_id, router_id, tenant_name))
+
+    db.commit()
+    db.close()
 
 def remove_network(user, tenant_name):
   db, cursor = initialise_database()
@@ -365,6 +405,14 @@ def search_user(user, tenant_name):
   else:
     return True
 
+def tenant_finder(user):
+  db, cursor = initialise_database()
+
+  cursor.execute('''SELECT tenant FROM clusters WHERE username = ?''',
+                    (user,))
+  tenant = cursor.fetchall()
+  return tenant[0][0]
+
 def fetch_id(tenant_name):
   db, cursor = initialise_database()
 
@@ -409,6 +457,10 @@ def checkMappings(request):
   return web.json_response(array)
 
 
+
+
+
+
 if __name__ == '__main__':
   args = parser.parse_args()
   #Manage Users Table
@@ -428,7 +480,7 @@ if __name__ == '__main__':
 
   if args.subparser == "cluster":
     if args.options == "remove":
-      remove_cluster(args.user[0], args.tenant_name[0])
+      remove_cluster(args.user[0])
 
   if args.subparser == "network":
     if args.options == "remove":
