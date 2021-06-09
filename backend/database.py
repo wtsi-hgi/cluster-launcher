@@ -211,14 +211,14 @@ def remove_cluster(user):
 
 def add_network(username, network_id, subnet_id, router_id, tenant_name):
   db, cursor = initialise_database()
-  
+
   cursor.execute('''INSERT INTO
       networking(user_name, network_id, subnet_id, router_id, tenant_name)
       VALUES(?, ?, ?, ?, ?)''',
       (username, network_id, subnet_id, router_id, tenant_name))
 
-    db.commit()
-    db.close()
+  db.commit()
+  db.close()
 
 def remove_network(user, tenant_name):
   db, cursor = initialise_database()
