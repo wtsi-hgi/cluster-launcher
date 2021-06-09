@@ -1,0 +1,8 @@
+.venv*
+.env/
+.terraform/
+hgi-openrc.sh
+*/__pycache__/*
+id_rsa*
+mercury-key.pub
+tenants_conf.yml
