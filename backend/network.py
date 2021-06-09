@@ -29,7 +29,7 @@ def create(conn, username, tenant_name):
   if (prefix+"-network") in network_list:
     print(username + "'s network failed to destroy last session. Using: " + network_name + "again!")
   else:
-    
+
     neutron = _neutron(tenant_name)
     db, cursor = database.initialise_database()
     db.close()
@@ -75,6 +75,7 @@ def destroy(conn, username, tenant_name):
 
   if network_name in network_list:
     db, cursor = database.initialise_database()
+    db.close()
     neutron = _neutron(tenant_name)
 
     try:
@@ -96,6 +97,7 @@ def destroy(conn, username, tenant_name):
       neutron.delete_network(network_id)
 
       database.remove_network(username, tenant_name)
-
+    except Exception:
+      pass
   else:
     print("Error: Failed to destroy network: " + network_name + "as the network does not exist.")
