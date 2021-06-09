@@ -443,7 +443,7 @@ def checkMappings(request):
     username = request.headers['X-Forwarded-User']
   else:
     #For testing purposes
-    username = "an12"
+    username = "non-swarm-test"
 
   cursor.execute("SELECT tenant_name from user_tenant_mapping WHERE username = ?", [username])
   list_of_tenant_names = cursor.fetchall()
