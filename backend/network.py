@@ -24,9 +24,10 @@ def _neutron(tenant_name):
 # existing network exists, pertaining to checks in hail_launcher.py
 def create(conn, username, tenant_name):
   prefix = username+"-cluster"
+  network_name = prefix+"-network"
   network_list = [network.name for network in conn.network.networks()]
 
-  if (prefix+"-network") in network_list:
+  if network_name in network_list:
     print(username + "'s network failed to destroy last session. Using: " + network_name + "again!")
   else:
 
@@ -70,7 +71,8 @@ def create(conn, username, tenant_name):
 # This function will assume that no existing network exists, pertaining to
 # checks in hail_launcher.py
 def destroy(conn, username, tenant_name):
-  network_name = prefix + "-network"
+  prefix = username+"-cluster"
+  network_name = username + "-cluster-network"
   network_list = [network.name for network in conn.network.networks()]
 
   if network_name in network_list:

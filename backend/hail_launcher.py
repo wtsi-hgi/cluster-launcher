@@ -18,7 +18,7 @@ from constants import DATABASE_NAME
 #Enabling this before startup will display all prints to the terminal
 #Having this on constantly will prevent the handler from completing until
 #osdataproc has run - not changing screens and occasionally resulting in a timeout 
-DEBUG = False
+DEBUG = True
 
 async def startup(request):
   #X-Forwarded-User is passed through the Swarm's Nginx
@@ -228,6 +228,7 @@ async def job_status(request):
     #job was to bring a cluster up or down
     job = jobs[username][0]
     if job.done():
+      print(jobs[username][1])
       # Returns this response if the cluster is finished raising up
       if jobs[username][1] == "UP":
         #Reads the Master Public IP ready for sending to the frontend
