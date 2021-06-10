@@ -77,7 +77,6 @@ def destroy(conn, username, tenant_name):
 
   if network_name in network_list:
     db, cursor = database.initialise_database()
-    db.close()
     neutron = _neutron(tenant_name)
 
     try:
@@ -90,6 +89,8 @@ def destroy(conn, username, tenant_name):
 
       network_id, subnet_id, router_id = cursor.fetchone()
 
+      db.close()
+
       neutron.remove_interface_router(router_id, {
         "subnet_id": subnet_id
       })
@@ -97,7 +98,9 @@ def destroy(conn, username, tenant_name):
       neutron.delete_router(router_id)
       neutron.delete_subnet(subnet_id)
       neutron.delete_network(network_id)
-
+    except Exception:
+      print("Breaking on network removal")
+    try:
       database.remove_network(username, tenant_name)
     except Exception:
       pass
