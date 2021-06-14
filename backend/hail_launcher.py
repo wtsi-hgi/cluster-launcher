@@ -18,7 +18,7 @@ from constants import DATABASE_NAME
 #Enabling this before startup will display all prints to the terminal
 #Having this on constantly will prevent the handler from completing until
 #osdataproc has run - not changing screens and occasionally resulting in a timeout 
-DEBUG = True
+DEBUG = False
 
 async def startup(request):
   #X-Forwarded-User is passed through the Swarm's Nginx
