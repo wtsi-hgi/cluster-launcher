@@ -28,7 +28,7 @@ def create(conn, username, tenant_name):
   network_list = [network.name for network in conn.network.networks()]
 
   if network_name in network_list:
-    print(username + "'s network failed to destroy last session. Using: " + network_name + "again!")
+    print(username + "'s network failed to destroy last session. Using: " + network_name + " again!")
   else:
 
     neutron = _neutron(tenant_name)

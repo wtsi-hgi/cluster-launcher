@@ -84,6 +84,12 @@ def cluster_creator(request, attributes, username):
   flavors=conn.list_flavors()
   flavor_names = [str(flavor.name) for flavor in flavors if flavor.id is not None]
 
+  lustre_network = database.lustre_status(attributes['tenant'])
+
+  with open('tenants_conf.yml', 'r') as file:
+    data = yaml.load(file, Loader=yaml.Loader)
+    lustre_image = data['lustre_image'].get('image')
+
   if attributes["flavor"] not in flavor_names:
     #If the flavor provided by the user is not a valid flavor
     #it'll be switched for m2.medium
@@ -97,8 +103,10 @@ def cluster_creator(request, attributes, username):
       #This error indicates the cluster still exists despite the codebase believing it to be down
       print("A cluster is already registered - an error has occured!")
     else:
+      #This runs if the tenant does not have secure lustre support
       #Creates the user's network
       network.create(conn, username, attributes['tenant'])
+
       #Run the cluster creation bash script
       if "volume_name" in attributes:
         #Volume Size is set to zero if volume exists for the user in the tenant
@@ -106,7 +114,7 @@ def cluster_creator(request, attributes, username):
         print("Username: " + username + " is creating a cluster in " + attributes['tenant'] +", using volume: " + attributes['volume_name'])
         process = subprocess.run(['bash', 'cluster-creation.sh', username, attributes["password"],
                                  attributes["workers"], attributes["flavor"], attributes["volume_name"],
-                                 volume_size], env = osdataproc_creds, capture_output=True, text=True)
+                                 volume_size, lustre_network, lustre_image], env = osdataproc_creds, capture_output=True, text=True)
       else:
         #If the user does not have a volume in the tenant, one is created for them
         #in the schema of USERNAME-cluster-volume
@@ -115,7 +123,7 @@ def cluster_creator(request, attributes, username):
         print("Creating Volume called: " + volume_name + " of size: " + attributes["volSize"])
         print("Username: " + username + " is creating a cluster in " + attributes['tenant'] +", using volume: " + volume_name)
         process = subprocess.run(['bash', 'cluster-creation.sh', username, attributes["password"],
-                                 attributes["workers"], attributes["flavor"], volume_name, attributes["volSize"]],
+                                 attributes["workers"], attributes["flavor"], volume_name, attributes["volSize"], lustre_network, lustre_image],
                                  env = osdataproc_creds, capture_output=True, text=True)
       if DEBUG:
         print(process)
@@ -228,7 +236,6 @@ async def job_status(request):
     #job was to bring a cluster up or down
     job = jobs[username][0]
     if job.done():
-      print(jobs[username][1])
       # Returns this response if the cluster is finished raising up
       if jobs[username][1] == "UP":
         #Reads the Master Public IP ready for sending to the frontend
@@ -309,5 +316,4 @@ def env_credentials(tenant_name):
     creds['OS_PROJECT_NAME'] = tenant_name
   except KeyError:
     raise Exception("Could not find all required fields in the environment")
-
   return creds

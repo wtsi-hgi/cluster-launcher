@@ -97,6 +97,9 @@ networks_list_mappings = list_subparsers.add_parser('networks')
 volumes_list_mappings = list_subparsers.add_parser('volumes')
 
 def initialise_database():
+  if not os.path.exists(DATABASE_NAME):
+    with open(DATABASE_NAME, 'w'): pass
+
   #Initialise the database by creating the SQL tables if not present already
   db = sqlite3.connect(DATABASE_NAME)
   cursor = db.cursor()
@@ -202,7 +205,7 @@ def add_cluster(user, tenant_name, cluster_ip, num_workers):
 
 def remove_cluster(user):
   db, cursor = initialise_database()
-  print(user)
+
   cursor.execute("DELETE from clusters where username = ?", (user,))
 
   db.commit()
@@ -221,8 +224,7 @@ def add_network(username, network_id, subnet_id, router_id, tenant_name):
 
 def remove_network(user, tenant_name):
   db, cursor = initialise_database()
-  print(user)
-  print(tenant_name)
+
   cursor.execute("DELETE from networking where user_name = ? AND tenant_name = ?", (user, tenant_name))
 
   db.commit()
@@ -235,8 +237,8 @@ def populate_tenants():
     data = yaml.load(tenant_file, Loader=yaml.Loader)
 
   for tenant in data['tenants']:
-    id = data['tenants'].get(tenant)
-    lustre_desc = ""
+    id = data['tenants'][tenant].get('id')
+    lustre_desc = data['tenants'][tenant].get('network')
     try:
       cursor.execute("INSERT INTO tenants (tenants_name, tenants_id, lustre_description) VALUES (?, ?, ?)",(tenant, id, lustre_desc))
       db.commit()
@@ -417,10 +419,17 @@ def fetch_id(tenant_name):
   db, cursor = initialise_database()
 
   cursor.execute("SELECT tenants_id from tenants WHERE tenants_name = ?", [tenant_name])
-  tenant_id = cursor.fetchall()
+  tenant_id = cursor.fetchone()[0]
 
-  return tenant_id[0][0]
+  return tenant_id
 
+def lustre_status(tenant_name):
+  db, cursor = initialise_database()
+  cursor.execute("SELECT lustre_description from tenants WHERE tenants_name = ?",[tenant_name])
+
+  lustre_network= cursor.fetchone()[0]
+
+  return lustre_network
 
 def checkVolumes(username, tenant_name):
   db, cursor = initialise_database()
