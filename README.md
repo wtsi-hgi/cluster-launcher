@@ -12,7 +12,7 @@ The Number of Workers you wish to have in your cluster
 * A Flavour - This is the flavour you want all your instances (Masters & Workers) to have. Prior to launching, you should check the resources in the tenant that you wish to launch in, as launching with too few resources will break your launch. This can be done here: https://metrics.internal.sanger.ac.uk/dashboard/db/fce-available-capacity-theta?refresh=5m&orgId=1 
 * Volume Size - The first time you launch a cluster, you will have a volume assigned and created for you. This field allows you to specify the size in Gb. After initial launch, subsequent cluster creations will assume you wish to use the same volume, and will automatically launch using it. If you wish to decouple a volume associated with yourself, contact HGI.
 
-Once all the information has been entered on the site, simply press Launch. The process to load the cluster will take 10-30 Minutes, typically closer to 10, depending on connectivity/download speeds of the ansible that osdataproc uses. 
+Once all the information has been entered on the site, simply press Launch. The process to load the cluster will take 10-30 Minutes, typically closer to 20-25, depending on connectivity/download speeds of the ansible that osdataproc uses. 
 
 
 # Using your Cluster:
