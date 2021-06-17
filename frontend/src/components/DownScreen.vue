@@ -8,6 +8,7 @@
            launching another without a member of the HGI departments intervention
         </p>
         <a href="https://metrics.internal.sanger.ac.uk/dashboard/db/fce-available-capacity-theta?refresh=5m&orgId=1">Available Theta Resources</a>
+        <a href="https://confluence.sanger.ac.uk/display/HGI/Cluster+Launcher+Operating+Manual">Cluster Launcher Operator Manual</a>
       </div>
     </div>
     <div class="DownScreenMain">
