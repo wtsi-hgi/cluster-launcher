@@ -20,14 +20,18 @@ class TestDatabase(TestCase):
   '''
 
   @patch(database.DATABASE_NAME)
-  def test_users(self, mocked_db):
+  def test_suite(self, mocked_db):
+    def test_users(self, mocked_db):
 
-    with tempfile.NamedTemporaryFile() as tempFile:
-      mocked_db = tempFile.name
-      database.add_user('an12')
-      result = check_database_entry(mocked_db, "username", "users")
-      print(result)
-      self.assertEqual()
+      with tempfile.NamedTemporaryFile() as tempFile:
+        mocked_db = tempFile.name
+        database.add_user('an12')
+        result = check_database_entry(mocked_db, "username", "users")
+        print(result)
+        self.assertEqual()
+  
+    def test_tenants(self, mocked_db):
+      pass
 
 
 def check_database_entry(temp_file, option, table):
@@ -35,4 +39,4 @@ def check_database_entry(temp_file, option, table):
   cursor = db.cursor()
   query = "SELECT" + option + "FROM" + table
   cursor.execute(query)
-  return(cursor.fetchone())
+  return(cursor.fetchall())

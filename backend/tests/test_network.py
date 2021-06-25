@@ -1,7 +1,7 @@
 import os
 from unittest import TestCase
 from unittest.mock import Mock, patch
-import network
+from backend import network
 import neutronclient.v2_0
 
 class TestNetworking(TestCase):
