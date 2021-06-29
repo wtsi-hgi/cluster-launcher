@@ -25,13 +25,31 @@ class TestDatabase(TestCase):
 
       with tempfile.NamedTemporaryFile() as tempFile:
         mocked_db = tempFile.name
-        database.add_user('an12')
+        database.add_user('test-user')
         result = check_database_entry(mocked_db, "username", "users")
         print(result)
         self.assertEqual()
   
     def test_tenants(self, mocked_db):
-      pass
+      db, cursor = database.initialise_database()
+      with tempfile.NamedTemporaryFile() as tempFile:
+        database.populate_tenants()
+        result = check_database_entry(mocked_db, "tenants", "hgi")
+        self.assertIn('hgi', result)
+        cursor.execute("DELETE FROM tenants")
+        self.assertEqual(cursor.rowcount, 8)
+        db.commit()
+        db.close()
+
+    def test_mappings(self, mocked_db):
+      with tempfile.NamedTemporaryFile() as tempFile:
+        mocked_db = tempFile.name
+        db, cursor = database.initialise_database()
+        cursor.execute("INSERT INTO users (username) VALUES (?)",('test-user'))
+        cursor.execute("INSERT INTO tenants (tenants_name, tenants_id, lustre_description) VALUES (?, ?, ?)",('test-tenant', 'test-tenant-id', 'NA'))
+        db.commit()
+        db.close()
+        database.link_tables('test-user', 'test-tenant')
 
 
 def check_database_entry(temp_file, option, table):
